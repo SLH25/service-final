@@ -1,8 +1,7 @@
 import axios from "axios";
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from "./tokenManager";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE || "http://localhost:8000/api/accounts/";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE || "https://service-final.onrender.com/api/accounts").replace(/\/+$|^\s+|\s+$/g, "");
 
 const Api = axios.create({
   baseURL: API_BASE_URL,
@@ -78,7 +77,7 @@ Api.interceptors.response.use(
 
     try {
       const response = await axios.post(
-        `${API_BASE_URL}refresh/`,
+        `${API_BASE_URL}/refresh/`,
         { refresh: refreshToken }
       );
 

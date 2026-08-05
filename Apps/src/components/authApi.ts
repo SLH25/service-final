@@ -1,8 +1,8 @@
 import axios from "axios";
 
-// Base URL configurable : VITE_API_BASE en production (Vercel),
-// sinon localhost en développement. Le "/" final est retiré pour éviter les "//".
-const API_BASE_URL = (import.meta.env.VITE_API_BASE || "http://localhost:8000/api/accounts/").replace(/\/+$/, "");
+// Base URL configurable : VITE_API_BASE en production (Render, Vercel, etc.).
+// Sinon localhost en développement. Le "/" final est retiré pour éviter les "//".
+const API_BASE_URL = (import.meta.env.VITE_API_BASE || "https://service-final.onrender.com/api/accounts").replace(/\/+$/, "");
 
 // Instance axios publique pour l'authentification (register, login, me, ...)
 const AuthApi = axios.create({
