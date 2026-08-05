@@ -8,6 +8,8 @@ import {
   Edit3,
   Trash2,
   ChevronDown,
+  CheckCircle2,
+  Eye,
 } from "lucide-react";
 import type { PrestataireData } from "../types";
 
@@ -21,12 +23,25 @@ const serviceColors: Record<string, string> = {
 };
 
 const statutColors: Record<string, string> = {
-  Actif: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  Inactif: "bg-red-500/10 text-red-600 dark:text-red-400",
-  "En attente": "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  PENDING: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  AFFICHE: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  VERIFIED: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  REJECTED: "bg-red-500/10 text-red-600 dark:text-red-400",
 };
 
-const ALL_SERVICES = ["Plomberie", "Électricité", "Jardinage", "Ménage", "Déménagement", "Informatique"];
+const statutLabels: Record<string, string> = {
+  PENDING: "En attente",
+  AFFICHE: "Affiché",
+  VERIFIED: "Vérifié",
+  REJECTED: "Refusé",
+};
+
+const statutDotColors: Record<string, string> = {
+  PENDING: "bg-amber-500",
+  AFFICHE: "bg-sky-500",
+  VERIFIED: "bg-emerald-500",
+  REJECTED: "bg-red-500",
+};
 
 export default function PrestataireList({
   prestataires,
@@ -37,8 +52,11 @@ export default function PrestataireList({
   filterStatut,
   onFilterStatutChange,
   loading = false,
+  availableServices = [],
   onEdit,
   onDelete,
+  onVerify,
+  onAffiche,
 }: {
   prestataires: PrestataireData[];
   searchQuery: string;
@@ -48,9 +66,16 @@ export default function PrestataireList({
   filterStatut: string;
   onFilterStatutChange: (s: string) => void;
   loading?: boolean;
+  availableServices?: string[];
   onEdit: (p: PrestataireData) => void;
   onDelete: (id: string) => void;
+  onVerify: (id: string) => void;
+  onAffiche: (id: string) => void;
 }) {
+  const serviceOptions = availableServices.length > 0
+    ? availableServices
+    : Array.from(new Set(prestataires.map((p) => p.service).filter(Boolean)));
+
   return (
     <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-6 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/90">
       {/* Search & Filters */}
@@ -73,7 +98,7 @@ export default function PrestataireList({
             className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:focus:border-amber-500 sm:w-44"
           >
             <option value="">Tous les services</option>
-            {ALL_SERVICES.map((s) => (
+            {serviceOptions.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
@@ -83,12 +108,13 @@ export default function PrestataireList({
           <select
             value={filterStatut}
             onChange={(e) => onFilterStatutChange(e.target.value)}
-            className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:focus:border-amber-500 sm:w-40"
+            className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:focus:border-amber-500 sm:w-44"
           >
             <option value="">Tous les statuts</option>
-            <option value="Actif">Actif</option>
-            <option value="Inactif">Inactif</option>
-            <option value="En attente">En attente</option>
+            <option value="PENDING">En attente</option>
+            <option value="AFFICHE">Affiché</option>
+            <option value="VERIFIED">Vérifié</option>
+            <option value="REJECTED">Refusé</option>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         </div>
@@ -116,7 +142,7 @@ export default function PrestataireList({
           )}
           {filterStatut && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-              Statut: {filterStatut}
+              Statut: {statutLabels[filterStatut] || filterStatut}
               <button onClick={() => onFilterStatutChange("")}>
                 <X className="h-3 w-3" />
               </button>
@@ -156,7 +182,7 @@ export default function PrestataireList({
                 <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Prestataire</th>
                 <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Service</th>
                 <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Statut</th>
-                <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Date d'ajout</th>
+                <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Date d'inscription</th>
                 <th className="px-4 py-3 text-right font-semibold text-slate-600 dark:text-slate-300">Actions</th>
               </tr>
             </thead>
@@ -186,16 +212,13 @@ export default function PrestataireList({
                   </td>
                   <td className="px-4 py-3.5">
                     <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ${serviceColors[p.service] || "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>
-                      {p.service}
+                      {p.service || "—"}
                     </span>
                   </td>
                   <td className="px-4 py-3.5">
                     <span className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${statutColors[p.statut] || "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${
-                        p.statut === "Actif" ? "bg-emerald-500" :
-                        p.statut === "Inactif" ? "bg-red-500" : "bg-amber-500"
-                      }`} />
-                      {p.statut}
+                      <span className={`h-1.5 w-1.5 rounded-full ${statutDotColors[p.statut] || "bg-slate-400"}`} />
+                      {statutLabels[p.statut] || p.statut}
                     </span>
                   </td>
                   <td className="px-4 py-3.5">
@@ -206,14 +229,34 @@ export default function PrestataireList({
                   </td>
                   <td className="px-4 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {/* Vérifier → VERIFIED (visible + badge) */}
+                      <button
+                        onClick={() => onVerify(p.id)}
+                        disabled={p.statut === "VERIFIED"}
+                        title="Vérifier (affiche avec badge Vérifié)"
+                        className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-emerald-500/10 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed dark:hover:text-emerald-400"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                      </button>
+                      {/* Afficher → AFFICHE (visible sans badge) */}
+                      <button
+                        onClick={() => onAffiche(p.id)}
+                        disabled={p.statut === "AFFICHE"}
+                        title="Afficher (visible sans badge Vérifié)"
+                        className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-sky-500/10 hover:text-sky-600 disabled:opacity-30 disabled:cursor-not-allowed dark:hover:text-sky-400"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                       <button
                         onClick={() => onEdit(p)}
+                        title="Modifier"
                         className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400"
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => onDelete(p.id)}
+                        title="Supprimer"
                         className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-500"
                       >
                         <Trash2 className="h-4 w-4" />

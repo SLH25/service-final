@@ -1,66 +1,84 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { ReactNode } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import type { ReactNode } from "react";
+import type { Role } from "../authApi";
+import { logoutUser } from "../authApi";
 
-
-
+interface StoredUser {
+  id: number;
+  username: string;
+  email: string;
+  role: Role;
+  is_staff: boolean;
+  [key: string]: unknown;
+}
 
 interface AuthContextType {
+  user: StoredUser | null;
   userStatus: boolean;
-  login: (userData: any) => void;
+  role: Role | null;
+  login: (userData: StoredUser, accessToken?: string, refreshToken?: string) => void;
   logout: () => Promise<void>;
 }
 
+const TOKEN_KEY = "access_token";
+const REFRESH_KEY = "refresh_token";
+const USER_KEY = "user";
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function readStoredUser(): StoredUser | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? (JSON.parse(raw) as StoredUser) : null;
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [userStatus, setUserStatus] = useState<boolean>(false);
+  const [user, setUser] = useState<StoredUser | null>(() => readStoredUser());
 
   useEffect(() => {
-    // Check if user is logged in on mount (persist state on refresh)
-    const user = localStorage.getItem("user");
-    if (user) {
-      setUserStatus(true);
-    }
+    const onStorage = () => setUser(readStoredUser());
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const login = (userData: any) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUserStatus(true);
-  };
+  const login = useCallback(
+    (userData: StoredUser, accessToken?: string, refreshToken?: string) => {
+      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      if (accessToken) localStorage.setItem(TOKEN_KEY, accessToken);
+      if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
+      setUser(userData);
+    },
+    []
+  );
 
-  const logout = async () => {
-   
-    try {
-      // Attempt to retrieve token from user object or standalone key
-      const userStr = localStorage.getItem("user");
-      let token = localStorage.getItem("token");
-      
-      if (!token && userStr) {
-        const userData = JSON.parse(userStr);
-        token = userData.token || userData.access || userData.key;
+  const logout = useCallback(async () => {
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    if (refreshToken) {
+      try {
+        await logoutUser(refreshToken);
+      } catch {
+        // Ignorer les erreurs réseau : le refresh token est supprimé côté client
       }
-
-      if (token) {
-        // Use 127.0.0.1 if on localhost to avoid IPv6 ::1 connection issues
-        const apiHost = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
-        await axios.post(`http://${apiHost}:8000/app/auth/logout/`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
-    } catch (error) {
-      console.error("Logout failed:", error);
-    } finally {
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-      setUserStatus(false);
-      
     }
-  };
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+    setUser(null);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ userStatus, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        userStatus: !!user,
+        role: user?.role ?? null,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -69,7 +87,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

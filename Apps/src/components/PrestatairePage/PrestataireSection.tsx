@@ -1,7 +1,7 @@
 // src/components/CategoriesSection.tsx
 import React, { useState, useEffect } from "react";
 import { motion, type Variants } from "framer-motion";
-import { Star, MapPin, Check, Clock, ArrowRight, Languages } from "lucide-react";
+import { Star, MapPin, Check, Clock, ArrowRight, Languages, WifiOff, UserRound } from "lucide-react";
 import { fetchPublicPrestataires, type PublicPrestataire } from "../publicApi";
 
 export interface Provider {
@@ -18,60 +18,8 @@ export interface Provider {
   badge?: "Professionel" | "Étudiant";
 }
 
-// Données de fallback (hors-ligne)
-const fallbackProviders: Provider[] = [
-  {
-    id: "p1",
-    name: "John Smith",
-    profession: "Plombier professionnel",
-    rating: 4.8,
-    reviewCount: 127,
-    responseTime: "30 min",
-    location: "New York, États‑Unis",
-    language: "Anglais",
-    avatar: "",
-    verified: false,
-    badge: "Professionel",
-  },
-  {
-    id: "p2",
-    name: "Amina Diallo",
-    profession: "Développeuse Full‑Stack",
-    rating: 4.9,
-    reviewCount: 203,
-    responseTime: "1 h",
-    location: "Paris, France",
-    language: "Français",
-    avatar: "",
-    verified: true,
-    badge: "Professionel",
-  },
-  {
-    id: "p3",
-    name: "Carlos Rivera",
-    profession: "Électricien",
-    rating: 4.7,
-    reviewCount: 89,
-    responseTime: "15 min",
-    location: "Austin, États‑Unis",
-    language: "Bilingue",
-    avatar: "",
-    verified: false,
-  },
-  {
-    id: "p4",
-    name: "Sofia Rossi",
-    profession: "Maquilleuse professionnelle",
-    rating: 4.6,
-    reviewCount: 156,
-    responseTime: "45 min",
-    location: "Milan, Italie",
-    language: "Bilingue",
-    avatar: "",
-    verified: true,
-    badge: "Professionel",
-  },
-];
+// Durée du polling de synchronisation avec le backend (en ms)
+const SYNC_INTERVAL_MS = 30000;
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -105,47 +53,52 @@ const badgeStyles: Record<"Professionel" | "Étudiant", string> = {
 const PrestataireSection: React.FC = () => {
   const [prestataires, setPrestataires] = useState<PublicPrestataire[]>([]);
   const [loading, setLoading] = useState(true);
+  // `offline` passe à true quand l'API échoue → état explicite au lieu de données fictives
+  const [offline, setOffline] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadPrestataires() {
+    async function loadPrestataires(showSpinner = false) {
+      if (showSpinner) setLoading(true);
       try {
         const data = await fetchPublicPrestataires();
         if (!cancelled) {
           setPrestataires(data);
+          setOffline(false);
         }
       } catch {
-        // Mode dégradé : garder les données locales
+        if (!cancelled) setOffline(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
-    loadPrestataires();
+    loadPrestataires(true);
+
+    // Polling : resynchronise avec les modifications de l'admin toutes les 30s
+    const interval = setInterval(() => loadPrestataires(false), SYNC_INTERVAL_MS);
 
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
   }, []);
 
-  // Construire la liste à afficher : API si disponible, sinon fallback
-  const displayProviders: Provider[] =
-    prestataires.length > 0
-      ? prestataires.map((p) => ({
-          id: String(p.id),
-          name: `${p.first_name} ${p.last_name}`,
-          profession: p.service_name || "Prestataire",
-          rating: 4.8,
-          reviewCount: 0,
-          responseTime: "—",
-          location: "—",
-          language: "—",
-          avatar: "",
-          verified: true,
-          badge: "Professionel" as const,
-        }))
-      : fallbackProviders;
+  // Afficher les données API (aucun fallback fictif)
+  const displayProviders: Provider[] = prestataires.map((p) => ({
+    id: String(p.id),
+    name: `${p.first_name} ${p.last_name}`,
+    profession: p.service_name || "Prestataire",
+    rating: 4.8,
+    reviewCount: 0,
+    responseTime: "—",
+    location: "—",
+    language: "—",
+    avatar: "",
+    verified: true,
+    badge: "Professionel" as const,
+  }));
 
   return (
     <section
@@ -183,6 +136,30 @@ const PrestataireSection: React.FC = () => {
         {loading ? (
           <div className="mt-12 flex justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          </div>
+        ) : offline ? (
+          <div className="mt-12 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-800/40">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-500">
+              <WifiOff className="h-7 w-7" />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Données non synchronisées
+            </p>
+            <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+              Impossible de joindre le serveur. Les prestataires seront actualisés automatiquement dès que la connexion sera rétablie.
+            </p>
+          </div>
+        ) : displayProviders.length === 0 ? (
+          <div className="mt-12 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-800/40">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+              <UserRound className="h-7 w-7 text-slate-400" />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Aucun prestataire disponible
+            </p>
+            <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+              Aucun prestataire n'est publié pour le moment. Revenez bientôt.
+            </p>
           </div>
         ) : (
           <motion.div

@@ -417,7 +417,6 @@ function ServiceForm({
                   >
                     <option value="Actif">Actif</option>
                     <option value="Inactif">Inactif</option>
-                    <option value="En attente">En attente</option>
                   </select>
                 </div>
 

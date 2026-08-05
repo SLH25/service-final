@@ -42,37 +42,30 @@ const LoginForm: React.FC<LoginFormProps> = ({
   const [showPassword, setShowPassword] = useState(false);
 
   const inputClasses =
-    "w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200";
+    "w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200";
   const errorInputClasses =
     "w-full px-4 py-3 rounded-2xl border border-red-300 dark:border-red-600 bg-red-50/80 dark:bg-red-900/20 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 shadow-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200";
 
-  // Vérifier si le formulaire a des erreurs
   const hasErrors = Object.keys(errors).some(key => {
     const errorValue = errors[key as keyof typeof errors];
     return typeof errorValue === 'string' && errorValue.trim() !== '';
   });
-  
-  // Vérifier si tous les champs requis sont remplis
-  const isFormValid = 
+
+  const isFormValid =
     formData.username.trim() !== "" &&
     formData.password !== "";
 
-  // Handler de soumission avec vérification supplémentaire
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Double vérification avant soumission
+
     if (hasErrors) {
-      console.warn("Le formulaire contient des erreurs. Soumission bloquée.");
       return;
     }
-    
+
     if (!isFormValid) {
-      console.warn("Tous les champs requis doivent être remplis. Soumission bloquée.");
       return;
     }
-    
-    // Si tout est valide, procéder à la soumission
+
     await handleSubmit(e);
   };
 
@@ -168,7 +161,6 @@ const LoginForm: React.FC<LoginFormProps> = ({
             ? "from-gray-400 to-gray-500 cursor-not-allowed text-gray-200"
             : "from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white"
         }`}
-        title={hasErrors ? "Veuillez corriger les erreurs avant de soumettre" : !isFormValid ? "Veuillez remplir tous les champs requis" : ""}
       >
         {isSubmitting ? (
           <>
@@ -199,5 +191,3 @@ const LoginForm: React.FC<LoginFormProps> = ({
 };
 
 export default LoginForm;
-
-

@@ -1,8 +1,12 @@
 import axios from "axios";
 
+// Base URL configurable (comme l'admin) : VITE_API_BASE en production (Vercel),
+// sinon localhost en développement. Le "/" final est retiré pour éviter les "//".
+const API_BASE_URL = (import.meta.env.VITE_API_BASE || "http://localhost:8000/api/accounts/").replace(/\/+$/, "");
+
 // Instance axios publique (sans authentification)
 const PublicApi = axios.create({
-  baseURL: "http://localhost:8000/api/accounts/public/",
+  baseURL: `${API_BASE_URL}/public`,
   headers: {
     "Content-Type": "application/json",
   },
@@ -23,7 +27,12 @@ export interface PublicPrestataire {
   last_name: string;
   service_name: string;
   email: string;
-  phone: string;
+  telephone: string;
+  description: string;
+  photo: string;
+  adresse: string;
+  ville: string;
+  experience: number | null;
   status: string;
 }
 

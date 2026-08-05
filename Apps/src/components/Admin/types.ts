@@ -1,14 +1,31 @@
 export type Statut = "Actif" | "Inactif" | "En attente";
 
+/** Statuts métier d'un prestataire (définis côté backend). */
+export type PrestataireStatus = "PENDING" | "AFFICHE" | "VERIFIED" | "REJECTED";
+
 export interface PrestataireData {
   id: string;
-  nom: string;
   prenom: string;
+  nom: string;
   service: string;
   email: string;
   telephone: string;
   description: string;
-  statut: Statut;
+  photo: string;
+  adresse: string;
+  ville: string;
+  experience: number | null;
+  statut: PrestataireStatus;
+  dateAjout: string;
+}
+
+export interface ClientData {
+  id: string;
+  prenom: string;
+  nom: string;
+  username: string;
+  email: string;
+  telephone: string;
   dateAjout: string;
 }
 
@@ -16,16 +33,6 @@ export interface ServiceData {
   id: string;
   name: string;
   description: string;
-  statut: Statut;
-  dateAjout: string;
-}
-
-export interface UtilisateurData {
-  id: string;
-  name: string;
-  email: string;
-  telephone: string;
-  role: "Client" | "Prestataire" | "Admin";
   statut: Statut;
   dateAjout: string;
 }

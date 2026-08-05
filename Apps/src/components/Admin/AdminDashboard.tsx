@@ -43,23 +43,23 @@ const activityIcons: Record<string, typeof Users> = {
 };
 
 export default function AdminDashboard() {
-  const { prestataires, services, utilisateurs, activities, stats: apiStats, loading, error, refresh } = useAdminStore();
+  const { prestataires, services, clients, activities, stats: apiStats, loading, error, refresh } = useAdminStore();
 
   const statCards = [
     {
       icon: Users,
-      label: "Utilisateurs",
-      value: apiStats?.totalUsers ?? utilisateurs.length,
+      label: "Clients",
+      value: apiStats?.totalClients ?? clients.length,
       color: "bg-blue-500/10 text-blue-600 dark:text-blue-300",
-      detail: `${utilisateurs.filter((u) => u.statut === "Actif").length} actifs`,
-      page: "utilisateurs" as const,
+      detail: `${clients.length} sur la plateforme`,
+      page: "clients" as const,
     },
     {
       icon: Briefcase,
       label: "Prestataires",
       value: apiStats?.totalPrestataires ?? prestataires.length,
       color: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
-      detail: `${prestataires.filter((p) => p.statut === "Actif").length} actifs`,
+      detail: `${prestataires.filter((p) => p.statut === "VERIFIED" || p.statut === "AFFICHE").length} visibles`,
       page: "prestataires" as const,
     },
     {
@@ -80,7 +80,7 @@ export default function AdminDashboard() {
     },
   ];
 
-  const recentUsers = utilisateurs.slice(0, 4);
+  const recentClients = clients.slice(0, 4);
   const latestActivities = activities.slice(0, 5);
 
   return (
@@ -182,7 +182,7 @@ export default function AdminDashboard() {
 
       {/* Overview grid */}
       <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
-        {/* Left: Recent users */}
+        {/* Left: Recent clients */}
         <motion.div
           variants={itemVariants}
           className="rounded-2xl border border-slate-200/70 bg-white/90 p-6 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/90"
@@ -190,14 +190,14 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Derniers utilisateurs
+                Derniers clients
               </h2>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                {utilisateurs.length} utilisateurs sur la plateforme
+                {clients.length} clients sur la plateforme
               </p>
             </div>
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-xs font-bold text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
-              {utilisateurs.length}
+              {clients.length}
             </span>
           </div>
 
@@ -206,54 +206,35 @@ export default function AdminDashboard() {
               <thead>
                 <tr className="border-b border-slate-200/60 bg-slate-50/80 dark:border-slate-700/60 dark:bg-slate-950/50">
                   <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Nom</th>
-                  <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Rôle</th>
-                  <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Statut</th>
+                  <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Username</th>
+                  <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Inscription</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/60">
-                {recentUsers.length === 0 ? (
+                {recentClients.length === 0 ? (
                   <tr>
                     <td colSpan={3} className="px-4 py-8 text-center text-sm text-slate-400">
-                      Aucun utilisateur
+                      Aucun client
                     </td>
                   </tr>
                 ) : (
-                  recentUsers.map((user) => (
-                    <tr key={user.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  recentClients.map((c) => (
+                    <tr key={c.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-[10px] font-bold text-white">
-                            {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                            {c.prenom[0]}{c.nom[0]}
                           </div>
-                          <span className="font-medium text-slate-900 dark:text-white">{user.name}</span>
+                          <span className="font-medium text-slate-900 dark:text-white">{c.prenom} {c.nom}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          {user.role}
+                          {c.username}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center gap-1 text-xs font-medium ${
-                            user.statut === "Actif"
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : user.statut === "En attente"
-                              ? "text-amber-600 dark:text-amber-400"
-                              : "text-red-500 dark:text-red-400"
-                          }`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              user.statut === "Actif"
-                                ? "bg-emerald-500"
-                                : user.statut === "En attente"
-                                ? "bg-amber-500"
-                                : "bg-red-500"
-                            }`}
-                          />
-                          {user.statut}
-                        </span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">{c.dateAjout}</span>
                       </td>
                     </tr>
                   ))
@@ -345,9 +326,9 @@ export default function AdminDashboard() {
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Prestataires actifs</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Prestataires vérifiés</p>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                {prestataires.filter((p) => p.statut === "Actif").length}
+                {prestataires.filter((p) => p.statut === "VERIFIED").length}
               </p>
             </div>
           </div>
@@ -358,11 +339,9 @@ export default function AdminDashboard() {
               <AlertCircle className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">En attente</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Prestataires en attente</p>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                {utilisateurs.filter((u) => u.statut === "En attente").length +
-                  prestataires.filter((p) => p.statut === "En attente").length +
-                  services.filter((s) => s.statut === "En attente").length}
+                {prestataires.filter((p) => p.statut === "PENDING").length}
               </p>
             </div>
           </div>

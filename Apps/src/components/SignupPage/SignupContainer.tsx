@@ -1,23 +1,43 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { motion } from "framer-motion";
 import { User, Briefcase, CheckCircle } from "lucide-react";
 import SignupForm from "./SignupForm";
-import PrestataireForm from "./SigunpFormPrestataire";
+import PrestataireForm from "./SignupFormPrestataire";
 import { useAuth } from "./AuthContext";
+import { registerUser, type RegisterClientPayload, type RegisterPrestatairePayload } from "../authApi";
 
-interface FormData {
+export interface FormData {
   firstName: string;
   lastName: string;
   username: string;
   email: string;
+  telephone: string;
+  serviceId: number | "";
+  description: string;
+  ville: string;
+  adresse: string;
   password: string;
-  specialties: string[];
+  passwordConfirm: string;
   acceptTerms: boolean;
- 
- 
 }
+
+const emptyForm: FormData = {
+  firstName: "",
+  lastName: "",
+  username: "",
+  email: "",
+  telephone: "",
+  serviceId: "",
+  description: "",
+  ville: "",
+  adresse: "",
+  password: "",
+  passwordConfirm: "",
+  acceptTerms: false,
+};
+
+export type FormErrors = Partial<Record<keyof FormData, string>> & { server?: string };
 
 const SignupContainer: React.FC = () => {
   const navigate = useNavigate();
@@ -25,31 +45,18 @@ const SignupContainer: React.FC = () => {
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState<"client" | "prestataire">("client");
 
-  const [formData, setFormData] = useState<FormData>({
-    firstName: "",
-    lastName: "",
-    username: "",
-    email: "",
-    password: "",
-    acceptTerms: false,
-    specialties:[],
-    
-  });
-
-  const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [formData, setFormData] = useState<FormData>(emptyForm);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleTypeSelect = (type: "client" | "prestataire") => {
     setSelectedType(type);
-    setFormData((prev) => ({ ...prev, userType: type }));
     setStep(2);
   };
 
-  // === Fonction pour gérer les changements ===
+  // === Gestion des changements ===
   const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
@@ -59,136 +66,139 @@ const SignupContainer: React.FC = () => {
     }));
 
     if (errors[name as keyof FormData]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: undefined,
-      }));
+      setErrors((prev) => ({ ...prev, [name]: undefined, server: undefined }));
     }
   };
 
-  // === Fonction pour valider ===
+  // === Validation des champs communs (username, email, password, ...) ===
   const validateForm = (): boolean => {
-    const newErrors: Partial<FormData> = {};
-    
-    // Si c'est un prestataire, on laisse le composant PrestataireForm gérer sa validation interne
-    if (selectedType === "prestataire") {
-        return true; 
-    }
+    const newErrors: FormErrors = {};
 
-    // Validation du prénom
     if (!formData.firstName.trim()) {
       newErrors.firstName = "Le prénom est requis";
     } else if (formData.firstName.trim().length < 2) {
       newErrors.firstName = "Le prénom doit contenir au moins 2 caractères";
-    } else if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(formData.firstName.trim())) {
-      newErrors.firstName = "Le prénom ne doit contenir que des lettres";
     }
-    
-    // Validation du nom
+
     if (!formData.lastName.trim()) {
       newErrors.lastName = "Le nom est requis";
     } else if (formData.lastName.trim().length < 2) {
       newErrors.lastName = "Le nom doit contenir au moins 2 caractères";
-    } else if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(formData.lastName.trim())) {
-      newErrors.lastName = "Le nom ne doit contenir que des lettres";
-    }
-    
-    // Validation du username
-    if (!formData.username.trim()) {
-      newErrors.username = "Le nom d'utilisateur est requis";
-    } else if (formData.username.trim().length < 3) {
-      newErrors.username = "Le nom d'utilisateur doit contenir au moins 3 caractères";
     }
 
-    // Validation de l'email
+    if (!formData.username.trim()) {
+      newErrors.username = "Le nom d'utilisateur est requis";
+    } else if (!/^[a-zA-Z0-9_.-]{3,}$/.test(formData.username.trim())) {
+      newErrors.username = "3 caractères min. (lettres, chiffres, _ . -)";
+    }
+
     if (!formData.email.trim()) {
       newErrors.email = "L'email est requis";
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email.trim())) {
-        newErrors.email = "L'email n'est pas valide";
-      }
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      newErrors.email = "L'email n'est pas valide";
     }
-    
-    // Validation du mot de passe
+
     if (!formData.password) {
       newErrors.password = "Le mot de passe est requis";
     } else if (formData.password.length < 8) {
       newErrors.password = "Le mot de passe doit contenir au moins 8 caractères";
-    } else if (!/(?=.*[a-z])/.test(formData.password)) {
-      newErrors.password = "Le mot de passe doit contenir au moins une minuscule";
-    } else if (!/(?=.*[A-Z])/.test(formData.password)) {
-      newErrors.password = "Le mot de passe doit contenir au moins une majuscule";
-    } else if (!/(?=.*\d)/.test(formData.password)) {
-      newErrors.password = "Le mot de passe doit contenir au moins un chiffre";
     }
-    
+
+    if (formData.password !== formData.passwordConfirm) {
+      newErrors.passwordConfirm = "Les mots de passe ne correspondent pas";
+    }
+
+    if (!formData.acceptTerms) {
+      newErrors.acceptTerms = "Vous devez accepter les conditions";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // === Soumission du formulaire ===
+  // === Soumission → POST /api/accounts/register/ (UNIQUE source de création) ===
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation stricte : validateForm() vérifie tous les champs et retourne false s'il y a des erreurs
-    // Si validateForm() retourne false, on bloque immédiatement la soumission
-    const isValid = validateForm();
-    if (!isValid) {
-      console.warn("❌ Validation échouée : le formulaire contient des erreurs. Soumission bloquée.");
-      // Les erreurs sont déjà affichées à l'utilisateur via setErrors dans validateForm
+
+    if (!validateForm()) return;
+    if (selectedType === "prestataire" && !formData.serviceId) {
+      setErrors((prev) => ({ ...prev, serviceId: "Le service est requis" }));
       return;
     }
-    
-    // Si validateForm() retourne true, cela signifie :
-    // - Tous les champs requis sont remplis
-    // - Tous les formats sont valides
-    // - Aucune erreur n'existe (newErrors est vide)
-    // On peut donc procéder à la soumission en toute sécurité
-    
-    console.log("✅ Validation réussie : soumission du formulaire...");
+
     setIsSubmitting(true);
-    
+    setErrors({});
+
     try {
-      // Préparation des données pour le backend (mapping camelCase -> snake_case)
-      let payload;
+      let payload: RegisterClientPayload | RegisterPrestatairePayload;
+
       if (selectedType === "client") {
         payload = {
-          username: formData.username,
+          role: "client",
+          username: formData.username.trim(),
           email: formData.email,
-          password: formData.password,
           first_name: formData.firstName,
           last_name: formData.lastName,
-          user_type: "client"
+          telephone: formData.telephone,
+          password: formData.password,
+          password_confirm: formData.passwordConfirm,
+          accept_terms: formData.acceptTerms,
         };
       } else {
-        // Payload pour prestataire
         payload = {
-          ...formData,
+          role: "prestataire",
+          username: formData.username.trim(),
+          email: formData.email,
           first_name: formData.firstName,
           last_name: formData.lastName,
-          user_type: "prestataire"
+          telephone: formData.telephone,
+          service: formData.serviceId || null,
+          description: formData.description,
+          ville: formData.ville,
+          adresse: formData.adresse,
+          password: formData.password,
+          password_confirm: formData.passwordConfirm,
+          accept_terms: formData.acceptTerms,
         };
       }
-      
-      const response = await axios.post("http://127.0.0.1:8000/app/auth/register/", payload);
-      
-      console.log("✅ Inscription réussie:", response.data);
-      
-      // Stocker les données du profil utilisateur et rediriger vers l'accueil
-      login(response.data);
+
+      const response = await registerUser(payload);
+
+      // Connexion locale avec le rôle détecté automatiquement + redirection
+      login(response.user, response.access, response.refresh);
       navigate("/");
-    } catch (error) {
-      console.error("❌ Erreur lors de l'inscription:", error);
-      if (axios.isAxiosError(error) && error.response) {
-        console.error("Détails de l'erreur:", error.response.data);
+    } catch (error: any) {
+      if (error?.response?.data && typeof error.response.data === "object") {
+        const data = error.response.data;
+        const fieldMap: Record<string, keyof FormData> = {
+          username: "username",
+          email: "email",
+          password: "password",
+          password_confirm: "passwordConfirm",
+          accept_terms: "acceptTerms",
+          first_name: "firstName",
+          last_name: "lastName",
+          service: "serviceId",
+          telephone: "telephone",
+        };
+        const newErrors: FormErrors = {};
+        for (const [key, messages] of Object.entries(data)) {
+          const field = fieldMap[key];
+          const message = Array.isArray(messages) ? messages[0] : String(messages);
+          if (field) newErrors[field] = message;
+          else newErrors.server = message;
+        }
+        setErrors(newErrors);
+      } else {
+        setErrors({ server: "Une erreur est survenue. Réessayez plus tard." });
       }
+      console.error("Erreur lors de l'inscription:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // === Rendu de l'étape 1 : Choix du type de compte ===
+  // === Étape 1 : Choix du type de compte ===
   if (step === 1) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -238,9 +248,14 @@ const SignupContainer: React.FC = () => {
     );
   }
 
-  // === Rendu de l'étape 2 : Formulaire spécifique ===
+  // === Étape 2 : Formulaire spécifique ===
   return (
     <div className="max-w-4xl mx-auto">
+      {errors.server && (
+        <div className="mx-4 mb-4 rounded-2xl bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+          {errors.server}
+        </div>
+      )}
       {selectedType === "client" ? (
         <SignupForm
           formData={formData}
@@ -249,6 +264,7 @@ const SignupContainer: React.FC = () => {
           isSubmitting={isSubmitting}
           handleSubmit={handleSubmit}
           handleInputChange={handleInputChange}
+          setStep={setStep}
         />
       ) : (
         <PrestataireForm

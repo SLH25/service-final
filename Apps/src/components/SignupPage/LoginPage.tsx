@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import LoginForm from "./LoginForm";
 import { useAuth } from "./AuthContext";
+import { loginUser } from "../authApi";
 
 interface LoginFormData {
   username: string;
@@ -39,60 +39,49 @@ export default function LoginPage() {
 
   const validate = (): boolean => {
     const newErrors: LoginFormErrors = {};
-    
-    // Validation du nom d'utilisateur
+
     if (!formData.username.trim()) {
       newErrors.username = "Le nom d'utilisateur est requis";
     }
-    
-    // Validation du mot de passe
+
     if (!formData.password || formData.password.trim().length === 0) {
       newErrors.password = "Le mot de passe est requis";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation stricte : si validate() retourne false, on bloque la soumission
+
     const isValid = validate();
-    if (!isValid) {
-      console.warn("❌ Validation échouée : le formulaire contient des erreurs. Soumission bloquée.");
-      // Les erreurs sont déjà affichées à l'utilisateur via setErrors dans validate
-      return;
-    }
-    
-    // Vérification supplémentaire : s'assurer que les champs ne sont pas vides
-    if (!formData.username.trim() || !formData.password) {
-      console.warn("❌ Champs manquants : soumission bloquée.");
-      return;
-    }
-    
-    // Si toutes les validations passent, on peut soumettre
-    console.log("✅ Validation réussie : connexion en cours...");
+    if (!isValid) return;
+
+    if (!formData.username.trim() || !formData.password) return;
+
     setIsSubmitting(true);
     setErrors((prev) => ({ ...prev, form: undefined }));
-    
-    try {
-      // Appel API de connexion
-      // Use dynamic host to allow access from other devices on the network
-      const apiHost = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
-      const response = await axios.post(`http://${apiHost}:8000/app/auth/login/`, formData);
 
-      // Mise à jour du statut utilisateur via le contexte
-      login(response.data);
-      
-      // Si succès, redirige vers l'accueil (ou un dashboard)
-      console.log("✅ Connexion réussie");
-      navigate("/");
+    try {
+      // Connexion avec username + mot de passe.
+      // Le rôle est détecté automatiquement par le backend.
+      const response = await loginUser(formData.username.trim(), formData.password);
+
+      // Stocke la session (user + tokens) via le contexte
+      login(response.user, response.access, response.refresh);
+
+      // Redirection automatique selon le rôle
+      if (response.user.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
     } catch (err: unknown) {
       console.error("❌ Erreur lors de la connexion:", err);
       setErrors((prev) => ({
         ...prev,
-        form: "Identifiants invalides. Vérifie ton nom d'utilisateur et ton mot de passe.",
+        form: "Identifiants invalides. Vérifiez votre nom d'utilisateur et votre mot de passe.",
       }));
     } finally {
       setIsSubmitting(false);

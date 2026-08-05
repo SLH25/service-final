@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, UserPlus, Briefcase, User, Mail, Phone, FileText, CheckCircle } from "lucide-react";
-import type { PrestataireData, Statut } from "../types";
+import { X, Briefcase, User, Mail, Phone, FileText, MapPin, Building, Image as ImageIcon, Star, CheckCircle } from "lucide-react";
+import type { PrestataireData, PrestataireStatus } from "../types";
+import { refreshServiceIdMap } from "../adminApi";
 
 interface FormErrors {
   nom?: string;
@@ -11,6 +12,8 @@ interface FormErrors {
   telephone?: string;
 }
 
+// Formulaire d'ÉDITION d'un prestataire existant.
+// Pas de création ici : les prestataires s'inscrivent via le site public.
 export default function PrestataireForm({
   open,
   onClose,
@@ -28,11 +31,28 @@ export default function PrestataireForm({
   const [email, setEmail] = useState("");
   const [telephone, setTelephone] = useState("");
   const [description, setDescription] = useState("");
-  const [statut, setStatut] = useState<Statut>("Actif");
+  const [photo, setPhoto] = useState("");
+  const [adresse, setAdresse] = useState("");
+  const [ville, setVille] = useState("");
+  const [experience, setExperience] = useState("");
+  const [statut, setStatut] = useState<PrestataireStatus>("PENDING");
   const [errors, setErrors] = useState<FormErrors>({});
   const [notification, setNotification] = useState<string | null>(null);
+  const [services, setServices] = useState<{ id: string; name: string }[]>([]);
 
   const isEditing = !!editData;
+
+  // Charger TOUS les services (actifs + inactifs) depuis le backend
+  useEffect(() => {
+    if (!open) return;
+    refreshServiceIdMap()
+      .then((map) => {
+        setServices(Object.entries(map).map(([name, id]) => ({ id: String(id), name })));
+      })
+      .catch(() => {
+        setServices([]);
+      });
+  }, [open]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -44,6 +64,10 @@ export default function PrestataireForm({
       setEmail(editData.email);
       setTelephone(editData.telephone);
       setDescription(editData.description);
+      setPhoto(editData.photo);
+      setAdresse(editData.adresse);
+      setVille(editData.ville);
+      setExperience(editData.experience != null ? String(editData.experience) : "");
       setStatut(editData.statut);
     } else {
       setNom("");
@@ -52,7 +76,11 @@ export default function PrestataireForm({
       setEmail("");
       setTelephone("");
       setDescription("");
-      setStatut("Actif");
+      setPhoto("");
+      setAdresse("");
+      setVille("");
+      setExperience("");
+      setStatut("PENDING");
     }
     setErrors({});
     setNotification(null);
@@ -88,10 +116,14 @@ export default function PrestataireForm({
       email: email.trim(),
       telephone: telephone.trim(),
       description: description.trim(),
+      photo: photo.trim(),
+      adresse: adresse.trim(),
+      ville: ville.trim(),
+      experience: experience.trim() !== "" ? Number(experience.trim()) : null,
       statut,
     });
 
-    setNotification(isEditing ? "Prestataire modifié avec succès !" : "Prestataire ajouté avec succès !");
+    setNotification("Prestataire modifié avec succès !");
 
     setTimeout(() => {
       setNotification(null);
@@ -105,6 +137,9 @@ export default function PrestataireForm({
         ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-500/20 dark:border-red-700 dark:bg-red-900/20"
         : "border-slate-200 bg-slate-50 focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800/50 dark:focus:border-amber-500 dark:focus:bg-slate-800"
     }`;
+
+  const plainInputClass =
+    "w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800/50 dark:text-white dark:placeholder-slate-500 dark:focus:border-amber-500 dark:focus:bg-slate-800";
 
   return (
     <AnimatePresence>
@@ -131,14 +166,16 @@ export default function PrestataireForm({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">
-                    <UserPlus className="h-5 w-5" />
+                    <Briefcase className="h-5 w-5" />
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                      {isEditing ? "Modifier le prestataire" : "Ajouter un prestataire"}
+                      {isEditing ? "Modifier le prestataire" : "Nouveau prestataire"}
                     </h2>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {isEditing ? "Modifiez les informations ci-dessous" : "Remplissez les informations ci-dessous"}
+                      {isEditing
+                        ? "Modifiez les informations ci-dessous"
+                        : "Les prestataires s'inscrivent via le site public"}
                     </p>
                   </div>
                 </div>
@@ -165,20 +202,6 @@ export default function PrestataireForm({
               <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nom</label>
-                    <div className="relative mt-1.5">
-                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="text"
-                        value={nom}
-                        onChange={(e) => setNom(e.target.value)}
-                        placeholder="Ex: Dupont"
-                        className={inputClass("nom")}
-                      />
-                    </div>
-                    {errors.nom && <p className="mt-1 text-xs text-red-500">{errors.nom}</p>}
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Prénom</label>
                     <div className="relative mt-1.5">
                       <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -192,91 +215,138 @@ export default function PrestataireForm({
                     </div>
                     {errors.prenom && <p className="mt-1 text-xs text-red-500">{errors.prenom}</p>}
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
-                  <div className="relative mt-1.5">
-                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Ex: jean.dupont@email.com"
-                      className={inputClass("email")}
-                    />
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nom</label>
+                    <div className="relative mt-1.5">
+                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={nom}
+                        onChange={(e) => setNom(e.target.value)}
+                        placeholder="Ex: Dupont"
+                        className={inputClass("nom")}
+                      />
+                    </div>
+                    {errors.nom && <p className="mt-1 text-xs text-red-500">{errors.nom}</p>}
                   </div>
-                  {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Téléphone</label>
-                  <div className="relative mt-1.5">
-                    <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="tel"
-                      value={telephone}
-                      onChange={(e) => setTelephone(e.target.value)}
-                      placeholder="Ex: 06 12 34 56 78"
-                      className={inputClass("telephone")}
-                    />
-                  </div>
-                  {errors.telephone && <p className="mt-1 text-xs text-red-500">{errors.telephone}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Service</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
                     <div className="relative mt-1.5">
-                      <Briefcase className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <select
-                        value={service}
-                        onChange={(e) => setService(e.target.value)}
-                        className={`w-full appearance-none rounded-xl border py-2.5 pl-10 pr-10 text-sm text-slate-900 outline-none transition-all focus:ring-2 dark:text-white ${
-                          errors.service
-                            ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-500/20 dark:border-red-700 dark:bg-red-900/20"
-                            : "border-slate-200 bg-slate-50 focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800/50 dark:focus:border-amber-500 dark:focus:bg-slate-800"
-                        }`}
-                      >
-                        <option value="">Sélectionner un service</option>
-                        <option value="Plomberie">Plomberie</option>
-                        <option value="Électricité">Électricité</option>
-                        <option value="Jardinage">Jardinage</option>
-                        <option value="Ménage">Ménage</option>
-                        <option value="Déménagement">Déménagement</option>
-                        <option value="Informatique">Informatique</option>
-                      </select>
-                      <svg
-                        className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Ex: jean.dupont@email.com"
+                        className={inputClass("email")}
+                      />
                     </div>
-                    {errors.service && <p className="mt-1 text-xs text-red-500">{errors.service}</p>}
+                    {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Statut</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Téléphone</label>
                     <div className="relative mt-1.5">
-                      <select
-                        value={statut}
-                        onChange={(e) => setStatut(e.target.value as Statut)}
-                        className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-10 text-sm text-slate-900 outline-none transition-all focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800/50 dark:text-white dark:focus:border-amber-500 dark:focus:bg-slate-800"
-                      >
-                        <option value="Actif">Actif</option>
-                        <option value="Inactif">Inactif</option>
-                        <option value="En attente">En attente</option>
-                      </select>
-                      <svg
-                        className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="tel"
+                        value={telephone}
+                        onChange={(e) => setTelephone(e.target.value)}
+                        placeholder="Ex: 06 12 34 56 78"
+                        className={inputClass("telephone")}
+                      />
+                    </div>
+                    {errors.telephone && <p className="mt-1 text-xs text-red-500">{errors.telephone}</p>}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Service</label>
+                  <div className="relative mt-1.5">
+                    <Briefcase className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <select
+                      value={service}
+                      onChange={(e) => setService(e.target.value)}
+                      className={`w-full appearance-none rounded-xl border py-2.5 pl-10 pr-10 text-sm text-slate-900 outline-none transition-all focus:ring-2 dark:text-white ${
+                        errors.service
+                          ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-500/20 dark:border-red-700 dark:bg-red-900/20"
+                          : "border-slate-200 bg-slate-50 focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800/50 dark:focus:border-amber-500 dark:focus:bg-slate-800"
+                      }`}
+                    >
+                      <option value="">Sélectionner un service</option>
+                      {services.map((s) => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                    <svg
+                      className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                  {errors.service && <p className="mt-1 text-xs text-red-500">{errors.service}</p>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Ville</label>
+                    <div className="relative mt-1.5">
+                      <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={ville}
+                        onChange={(e) => setVille(e.target.value)}
+                        placeholder="Ville"
+                        className={plainInputClass}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Adresse</label>
+                    <div className="relative mt-1.5">
+                      <Building className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={adresse}
+                        onChange={(e) => setAdresse(e.target.value)}
+                        placeholder="Adresse"
+                        className={plainInputClass}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Expérience (années)</label>
+                    <div className="relative mt-1.5">
+                      <Star className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="number"
+                        min={0}
+                        value={experience}
+                        onChange={(e) => setExperience(e.target.value)}
+                        placeholder="Ex: 5"
+                        className={plainInputClass}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Photo (URL)</label>
+                    <div className="relative mt-1.5">
+                      <ImageIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="url"
+                        value={photo}
+                        onChange={(e) => setPhoto(e.target.value)}
+                        placeholder="https://..."
+                        className={plainInputClass}
+                      />
                     </div>
                   </div>
                 </div>
@@ -295,6 +365,30 @@ export default function PrestataireForm({
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Statut</label>
+                  <div className="relative mt-1.5">
+                    <select
+                      value={statut}
+                      onChange={(e) => setStatut(e.target.value as PrestataireStatus)}
+                      className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-10 text-sm text-slate-900 outline-none transition-all focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800/50 dark:text-white dark:focus:border-amber-500 dark:focus:bg-slate-800"
+                    >
+                      <option value="PENDING">En attente</option>
+                      <option value="AFFICHE">Affiché</option>
+                      <option value="VERIFIED">Vérifié</option>
+                      <option value="REJECTED">Refusé</option>
+                    </select>
+                    <svg
+                      className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+
                 <div className="mt-6 flex gap-3 pt-2">
                   <button
                     type="button"
@@ -307,7 +401,7 @@ export default function PrestataireForm({
                     type="submit"
                     className="flex-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl active:scale-[0.98]"
                   >
-                    {isEditing ? "Enregistrer" : "Valider"}
+                    Enregistrer
                   </button>
                 </div>
               </form>

@@ -1,24 +1,13 @@
 import Api from "./Axio";
 import type {
+  ClientData,
   PrestataireData,
   ServiceData,
-  UtilisateurData,
   ActivityItem,
-  Statut,
+  PrestataireStatus,
 } from "./types";
 
 // ── Types API ─────────────────────────────────────────────
-
-interface ApiUser {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  is_active: boolean;
-  is_staff: boolean;
-  date_joined: string;
-}
 
 interface ApiService {
   id: number;
@@ -31,14 +20,34 @@ interface ApiService {
 
 interface ApiPrestataire {
   id: number;
+  user: number;
+  username: string;
   first_name: string;
   last_name: string;
   service: number | null;
   service_name: string | null;
   email: string;
-  phone: string;
+  telephone: string;
+  description: string;
+  photo: string;
+  adresse: string;
+  ville: string;
+  experience: number | null;
   status: string;
-  date_joined: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ApiClient {
+  id: number;
+  user: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  telephone: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface ApiActivity {
@@ -52,7 +61,10 @@ interface ApiStats {
   total_users: number;
   new_users_week: number;
   active_prestataires: number;
+  affiche_prestataires: number;
+  pending_prestataires: number;
   total_prestataires: number;
+  total_clients: number;
   total_services: number;
   active_services: number;
 }
@@ -89,19 +101,6 @@ function formatTime(iso: string): string {
 
 // ── Mapping API → Frontend ───────────────────────────────
 
-function mapUser(u: ApiUser): UtilisateurData {
-  const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username;
-  return {
-    id: String(u.id),
-    name: fullName,
-    email: u.email,
-    telephone: "",
-    role: u.is_staff ? "Admin" : "Client",
-    statut: u.is_active ? "Actif" : "Inactif",
-    dateAjout: formatDate(u.date_joined),
-  };
-}
-
 function mapService(s: ApiService): ServiceData {
   return {
     id: String(s.id),
@@ -119,16 +118,33 @@ function mapPrestataire(p: ApiPrestataire): PrestataireData {
     prenom: p.first_name,
     service: p.service_name ?? "",
     email: p.email,
-    telephone: p.phone,
-    description: "",
-    statut: (p.status as Statut) || "En attente",
-    dateAjout: formatDate(p.date_joined),
+    telephone: p.telephone ?? "",
+    description: p.description ?? "",
+    photo: p.photo ?? "",
+    adresse: p.adresse ?? "",
+    ville: p.ville ?? "",
+    experience: p.experience ?? null,
+    statut: (p.status as PrestataireStatus) || "PENDING",
+    dateAjout: formatDate(p.created_at),
+  };
+}
+
+function mapClient(c: ApiClient): ClientData {
+  return {
+    id: String(c.id),
+    prenom: c.first_name,
+    nom: c.last_name,
+    username: c.username,
+    email: c.email,
+    telephone: c.telephone ?? "",
+    dateAjout: formatDate(c.created_at),
   };
 }
 
 function mapActivity(a: ApiActivity): ActivityItem {
   const typeMap: Record<string, ActivityItem["type"]> = {
     user: "utilisateur",
+    client: "utilisateur",
     prestataire: "prestataire",
     service: "service",
     system: "system",
@@ -144,77 +160,75 @@ function mapActivity(a: ApiActivity): ActivityItem {
 
 // ── Mapping Frontend → API ───────────────────────────────
 
-interface UserPayload {
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  password?: string;
-  is_active?: boolean;
-  is_staff?: boolean;
-}
-
 interface ServicePayload {
   name: string;
   description: string;
   active: boolean;
 }
 
-interface PrestatairePayload {
-  first_name: string;
-  last_name: string;
-  service: number | null;
-  email: string;
-  phone: string;
-  status: string;
+interface ClientUpdatePayload {
+  first_name?: string;
+  last_name?: string;
+  telephone?: string;
+  email?: string;
+}
+
+interface PrestataireUpdatePayload {
+  first_name?: string;
+  last_name?: string;
+  service?: number | null;
+  email?: string;
+  telephone?: string;
+  description?: string;
+  photo?: string;
+  adresse?: string;
+  ville?: string;
+  experience?: number | null;
+  status?: string;
+}
+
+// Map des noms de services vers leurs IDs (chargés depuis l'API)
+let serviceIdMap: Record<string, number> = {};
+
+export function setServiceIdMap(map: Record<string, number>) {
+  serviceIdMap = map;
+}
+
+export function getServiceIdMap(): Record<string, number> {
+  return serviceIdMap;
+}
+
+// ── Synchronisation de la map nom → ID ───────────────────
+
+/**
+ * Charge TOUS les services (toutes les pages, y compris les inactifs)
+ * pour construire la map nom → ID. Évite de perdre la relation service
+ * quand un prestataire est lié à un service inactif.
+ */
+export async function fetchAllServices(): Promise<ServiceData[]> {
+  const all: ServiceData[] = [];
+  let page = 1;
+  for (;;) {
+    const res = await fetchServices("", page);
+    all.push(...res.data);
+    if (!res.next) break;
+    page += 1;
+  }
+  return all;
+}
+
+/** Recharge la map nom → ID à partir de tous les services. */
+export async function refreshServiceIdMap(): Promise<Record<string, number>> {
+  const services = await fetchAllServices();
+  const map: Record<string, number> = {};
+  services.forEach((s) => {
+    map[s.name] = Number(s.id);
+  });
+  setServiceIdMap(map);
+  return map;
 }
 
 // ── API Functions ────────────────────────────────────────
-
-export async function fetchUsers(search = "", page = 1, filters: { is_active?: boolean; is_staff?: boolean } = {}): Promise<PaginatedResult<UtilisateurData>> {
-  const params: Record<string, string | number | boolean> = { page };
-  if (search) params.search = search;
-  if (filters.is_active !== undefined) params.is_active = filters.is_active;
-  if (filters.is_staff !== undefined) params.is_staff = filters.is_staff;
-  const res = await Api.get<PaginatedResponse<ApiUser>>("/users/", { params });
-  return {
-    data: res.data.results.map(mapUser),
-    count: res.data.count,
-    next: res.data.next,
-    previous: res.data.previous,
-  };
-}
-
-export async function createUser(data: Omit<UtilisateurData, "id" | "dateAjout">): Promise<UtilisateurData> {
-  const payload: UserPayload = {
-    username: data.name.toLowerCase().replace(/\s+/g, "."),
-    email: data.email,
-    first_name: data.name.split(" ")[0] ?? "",
-    last_name: data.name.split(" ").slice(1).join(" ") ?? "",
-    password: "ChangeMe123!",
-    is_active: data.statut === "Actif",
-    is_staff: data.role === "Admin",
-  };
-  const res = await Api.post<ApiUser>("/users/", payload);
-  return mapUser(res.data);
-}
-
-export async function updateUser(id: string, data: Partial<UtilisateurData>): Promise<UtilisateurData> {
-  const payload: Partial<UserPayload> = {};
-  if (data.name) {
-    payload.first_name = data.name.split(" ")[0] ?? "";
-    payload.last_name = data.name.split(" ").slice(1).join(" ") ?? "";
-  }
-  if (data.email) payload.email = data.email;
-  if (data.statut) payload.is_active = data.statut === "Actif";
-  if (data.role) payload.is_staff = data.role === "Admin";
-  const res = await Api.patch<ApiUser>(`/users/${id}/`, payload);
-  return mapUser(res.data);
-}
-
-export async function deleteUser(id: string): Promise<void> {
-  await Api.delete(`/users/${id}/`);
-}
 
 export async function fetchServices(search = "", page = 1, filters: { active?: boolean } = {}): Promise<PaginatedResult<ServiceData>> {
   const params: Record<string, string | number | boolean> = { page };
@@ -252,6 +266,36 @@ export async function deleteService(id: string): Promise<void> {
   await Api.delete(`/services/${id}/`);
 }
 
+// ── Clients (pas de création : inscription publique uniquement) ──
+
+export async function fetchClients(search = "", page = 1): Promise<PaginatedResult<ClientData>> {
+  const params: Record<string, string | number> = { page };
+  if (search) params.search = search;
+  const res = await Api.get<PaginatedResponse<ApiClient>>("/clients/", { params });
+  return {
+    data: res.data.results.map(mapClient),
+    count: res.data.count,
+    next: res.data.next,
+    previous: res.data.previous,
+  };
+}
+
+export async function updateClient(id: string, data: Partial<ClientData>): Promise<ClientData> {
+  const payload: ClientUpdatePayload = {};
+  if (data.prenom !== undefined) payload.first_name = data.prenom;
+  if (data.nom !== undefined) payload.last_name = data.nom;
+  if (data.email !== undefined) payload.email = data.email;
+  if (data.telephone !== undefined) payload.telephone = data.telephone;
+  const res = await Api.patch<ApiClient>(`/clients/${id}/`, payload);
+  return mapClient(res.data);
+}
+
+export async function deleteClient(id: string): Promise<void> {
+  await Api.delete(`/clients/${id}/`);
+}
+
+// ── Prestataires (pas de création : inscription publique uniquement) ──
+
 export async function fetchPrestataires(search = "", page = 1, filters: { status?: string; service?: number } = {}): Promise<PaginatedResult<PrestataireData>> {
   const params: Record<string, string | number> = { page };
   if (search) params.search = search;
@@ -266,33 +310,36 @@ export async function fetchPrestataires(search = "", page = 1, filters: { status
   };
 }
 
-export async function createPrestataire(data: Omit<PrestataireData, "id" | "dateAjout">): Promise<PrestataireData> {
-  const payload: PrestatairePayload = {
-    first_name: data.prenom,
-    last_name: data.nom,
-    service: null,
-    email: data.email,
-    phone: data.telephone,
-    status: data.statut,
-  };
-  const res = await Api.post<ApiPrestataire>("/prestataires/", payload);
+export async function updatePrestataire(id: string, data: Partial<PrestataireData>): Promise<PrestataireData> {
+  const payload: PrestataireUpdatePayload = {};
+  if (data.prenom !== undefined) payload.first_name = data.prenom;
+  if (data.nom !== undefined) payload.last_name = data.nom;
+  if (data.email !== undefined) payload.email = data.email;
+  if (data.telephone !== undefined) payload.telephone = data.telephone;
+  if (data.description !== undefined) payload.description = data.description;
+  if (data.photo !== undefined) payload.photo = data.photo;
+  if (data.adresse !== undefined) payload.adresse = data.adresse;
+  if (data.ville !== undefined) payload.ville = data.ville;
+  if (data.experience !== undefined) payload.experience = data.experience;
+  if (data.statut !== undefined) payload.status = data.statut;
+  if (data.service) payload.service = serviceIdMap[data.service] ?? null;
+  const res = await Api.patch<ApiPrestataire>(`/prestataires/${id}/`, payload);
   return mapPrestataire(res.data);
 }
 
-export async function updatePrestataire(id: string, data: Partial<PrestataireData>): Promise<PrestataireData> {
-  const payload: Partial<PrestatairePayload> = {};
-  if (data.prenom) payload.first_name = data.prenom;
-  if (data.nom) payload.last_name = data.nom;
-  if (data.email) payload.email = data.email;
-  if (data.telephone !== undefined) payload.phone = data.telephone;
-  if (data.statut) payload.status = data.statut;
-  const res = await Api.patch<ApiPrestataire>(`/prestataires/${id}/`, payload);
+export type PrestataireStatusAction = "verify" | "affiche" | "reject";
+
+/** Change le statut d'un prestataire (verify → VERIFIED, affiche → AFFICHE, reject → REJECTED). */
+export async function setPrestataireStatus(id: string, action: PrestataireStatusAction): Promise<PrestataireData> {
+  const res = await Api.patch<ApiPrestataire>(`/prestataires/${id}/${action}/`);
   return mapPrestataire(res.data);
 }
 
 export async function deletePrestataire(id: string): Promise<void> {
   await Api.delete(`/prestataires/${id}/`);
 }
+
+// ── Stats & activité ─────────────────────────────────────
 
 export async function fetchStats(): Promise<ApiStats> {
   const res = await Api.get<ApiStats>("/stats/");

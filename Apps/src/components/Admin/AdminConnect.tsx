@@ -60,6 +60,13 @@ export default function AdminConnect({
       });
 
       if (response.status === 200) {
+        // Le backend renvoie maintenant tous les utilisateurs actifs ;
+        // on restreint ici l'accès au panneau aux administrateurs (is_staff).
+        const isStaff = response.data?.user?.is_staff;
+        if (!isStaff) {
+          setError("Accès refusé. Vous n'êtes pas administrateur.");
+          return;
+        }
         setTokens(response.data.access, response.data.refresh);
         localStorage.setItem("adminUsername", response.data.username);
         setAuthenticated(true);

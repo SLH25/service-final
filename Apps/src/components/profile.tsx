@@ -1,8 +1,8 @@
 import { useAuth } from "./SignupPage/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState , useEffect } from "react";
-import axios from 'axios';
 import { motion, AnimatePresence } from "framer-motion";
+import { fetchMe, updateMe } from "./authApi";
 import { 
     User, 
     Mail, 
@@ -16,11 +16,12 @@ import {
 import UpdateForm, { type UpdateFormData } from "./SignupPage/UpdateProfileForm";
 
 interface UserProfile {
-    id: string;
+    id: number;
     username: string;
     email: string;
     first_name: string;
     last_name: string;
+    role: string;
     is_active: boolean;
     created_at: string;
     updated_at: string;
@@ -67,22 +68,22 @@ const Profile = () => {
 
     const fetchUserProfile = async () => {
         try {
-            const userStr = localStorage.getItem("user");
-            if (!userStr) return;
+            const token = localStorage.getItem("access_token");
+            if (!token) return;
 
-            const localData = JSON.parse(userStr);
-            // Safely retrieve token handling different potential structures
-            const token = localData?.tokens?.access || localData?.token || localData?.access || localData?.key;
-    
-            if (token) {
-                // Use dynamic host to allow access from other devices on the network
-                const apiHost = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
-                const response = await axios.get(`http://${apiHost}:8000/app/auth/profile/`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-             
-                setUserData(response.data);
-            }
+            const me = await fetchMe(token);
+            const profile = me.profile ?? ({} as Record<string, unknown>);
+            setUserData({
+                id: me.id,
+                username: me.username,
+                email: me.email,
+                first_name: (profile.first_name as string) ?? "",
+                last_name: (profile.last_name as string) ?? "",
+                role: me.role,
+                is_active: true,
+                created_at: "",
+                updated_at: "",
+            });
         } catch (error) {
             console.error("fetching profile failed:", error);
         }
@@ -103,24 +104,27 @@ const Profile = () => {
         setUpdateErrors({});
 
         try {
-            const userStr = localStorage.getItem("user");
-            if (!userStr) return;
+            const token = localStorage.getItem("access_token");
+            if (!token) return;
 
-            const localData = JSON.parse(userStr);
-            const token = localData?.tokens?.access || localData?.token || localData?.access || localData?.key;
-    
-            if (token) {
-                const apiHost = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
-                const response = await axios.put(`http://${apiHost}:8000/app/auth/profile/update/`, {
-                    first_name: updateFormData.firstName,
-                    last_name: updateFormData.lastName,
-                    email: updateFormData.email
-                }, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setUserData(response.data);
-                setEditPopup(false);
-            }
+            const me = await updateMe(token, {
+                email: updateFormData.email,
+                first_name: updateFormData.firstName,
+                last_name: updateFormData.lastName,
+            });
+            const profile = me.profile ?? ({} as Record<string, unknown>);
+            setUserData({
+                id: me.id,
+                username: me.username,
+                email: me.email,
+                first_name: (profile.first_name as string) ?? "",
+                last_name: (profile.last_name as string) ?? "",
+                role: me.role,
+                is_active: true,
+                created_at: "",
+                updated_at: "",
+            });
+            setEditPopup(false);
         } catch (error) {
             console.error("Update failed:", error);
             setUpdateErrors({ form: "Une erreur est survenue lors de la mise à jour." });

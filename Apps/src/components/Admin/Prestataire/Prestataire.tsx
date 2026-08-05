@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Briefcase, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Briefcase, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAdminStore } from "../AdminStore";
 import type { PrestataireData } from "../types";
+import { getServiceIdMap, refreshServiceIdMap } from "../adminApi";
 import PrestataireList from "./PrestataireList";
 import PrestataireForm from "./PrestataireForm";
 
@@ -45,9 +46,10 @@ function DeleteModal({ target, title, onClose, onConfirm }: DeleteModalProps) {
 export default function Prestataire() {
   const {
     prestataires,
-    addPrestataire,
     updatePrestataire,
     deletePrestataire,
+    verifyPrestataire,
+    affichePrestataire,
     prestatairesCount,
     prestatairesPage,
     prestatairesHasNext,
@@ -63,7 +65,19 @@ export default function Prestataire() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterService, setFilterService] = useState("");
   const [filterStatut, setFilterStatut] = useState("");
+  const [availableServices, setAvailableServices] = useState<string[]>([]);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Charger TOUS les services (actifs + inactifs) pour le filtre et la map nom → ID.
+  useEffect(() => {
+    refreshServiceIdMap()
+      .then((map) => {
+        setAvailableServices(Object.keys(map));
+      })
+      .catch(() => {
+        setAvailableServices([]);
+      });
+  }, []);
 
   // Recherche serveur avec debounce
   useEffect(() => {
@@ -71,12 +85,16 @@ export default function Prestataire() {
     searchTimeout.current = setTimeout(() => {
       const filters: { status?: string; service?: number } = {};
       if (filterStatut) filters.status = filterStatut;
+      if (filterService) {
+        const serviceId = getServiceIdMap()[filterService];
+        if (serviceId) filters.service = serviceId;
+      }
       searchPrestataires(searchQuery, filters);
     }, 400);
     return () => {
       if (searchTimeout.current) clearTimeout(searchTimeout.current);
     };
-  }, [searchQuery, filterStatut, searchPrestataires]);
+  }, [searchQuery, filterService, filterStatut, searchPrestataires]);
 
   const handleFormClose = () => {
     setFormOpen(false);
@@ -106,18 +124,11 @@ export default function Prestataire() {
                   Gestion des prestataires
                 </h1>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {prestatairesCount} prestataire{prestatairesCount > 1 ? "s" : ""}
+                  {prestatairesCount} prestataire{prestatairesCount > 1 ? "s" : ""} — les inscriptions proviennent du site public
                 </p>
               </div>
             </div>
           </div>
-          <button
-            onClick={() => setFormOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl active:scale-[0.98]"
-          >
-            <UserPlus className="h-4 w-4" />
-            Ajouter un prestataire
-          </button>
         </div>
       </div>
 
@@ -131,11 +142,14 @@ export default function Prestataire() {
         filterStatut={filterStatut}
         onFilterStatutChange={setFilterStatut}
         loading={prestatairesLoading}
+        availableServices={availableServices}
         onEdit={(p) => { setEditData(p); setFormOpen(true); }}
         onDelete={(id) => {
           const target = prestataires.find((p) => p.id === id);
           if (target) setDeleteTarget(target);
         }}
+        onVerify={(id) => verifyPrestataire(id)}
+        onAffiche={(id) => affichePrestataire(id)}
       />
 
       {/* Pagination */}
@@ -166,7 +180,7 @@ export default function Prestataire() {
         </div>
       )}
 
-      {/* Add/Edit form modal */}
+      {/* Edit form modal (pas de création : inscription publique uniquement) */}
       <PrestataireForm
         open={formOpen}
         onClose={handleFormClose}
@@ -174,8 +188,6 @@ export default function Prestataire() {
         onSave={(data) => {
           if (editData) {
             updatePrestataire(editData.id, data);
-          } else {
-            addPrestataire(data);
           }
         }}
       />

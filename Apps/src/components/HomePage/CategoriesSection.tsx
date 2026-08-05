@@ -19,6 +19,7 @@ import {
   Camera,
   Wrench,
   ArrowRight,
+  WifiOff,
 } from "lucide-react";
 import { fetchPublicServices, type PublicService } from "../publicApi";
 
@@ -45,21 +46,8 @@ type Category = {
   providers: number;
 };
 
-// Catégories de fallback (hors-ligne)
-const fallbackCategories: Category[] = [
-  { name: "Santé", icon: Stethoscope, providers: 1200 },
-  { name: "Éducation", icon: BookOpen, providers: 980 },
-  { name: "Transport", icon: Car, providers: 1430 },
-  { name: "Beauté & Coiffure", icon: Scissors, providers: 2100 },
-  { name: "Restauration", icon: UtensilsCrossed, providers: 2600 },
-  { name: "Développement", icon: Code, providers: 1540 },
-  { name: "Sécurité", icon: ShieldCheck, providers: 640 },
-  { name: "Comptabilité", icon: Calculator, providers: 730 },
-  { name: "Maison", icon: Home, providers: 1120 },
-  { name: "Réparation moto", icon: Bike, providers: 875 },
-  { name: "Événementiel", icon: Music, providers: 940 },
-  { name: "Photographie", icon: Camera, providers: 660 },
-];
+// Durée du polling de synchronisation avec le backend (en ms)
+const SYNC_INTERVAL_MS = 30000;
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -104,39 +92,44 @@ const iconGradients = [
 const CategoriesSection: React.FC = () => {
   const [services, setServices] = useState<PublicService[]>([]);
   const [loading, setLoading] = useState(true);
+  // `offline` passe à true quand l'API échoue → état explicite au lieu de données fictives
+  const [offline, setOffline] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadServices() {
+    async function loadServices(showSpinner = false) {
+      if (showSpinner) setLoading(true);
       try {
         const data = await fetchPublicServices();
         if (!cancelled) {
           setServices(data);
+          setOffline(false);
         }
       } catch {
-        // Mode dégradé : garder les données locales
+        if (!cancelled) setOffline(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
-    loadServices();
+    loadServices(true);
+
+    // Polling : resynchronise avec les modifications de l'admin toutes les 30s
+    const interval = setInterval(() => loadServices(false), SYNC_INTERVAL_MS);
 
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
   }, []);
 
-  // Construire la liste à afficher : API si disponible, sinon fallback
-  const displayItems: Category[] =
-    services.length > 0
-      ? services.map((s, idx) => ({
-          name: s.name,
-          icon: serviceIcons[idx % serviceIcons.length],
-          providers: s.prestataires_count,
-        }))
-      : fallbackCategories;
+  // Afficher les données API (aucun fallback fictif)
+  const displayItems: Category[] = services.map((s, idx) => ({
+    name: s.name,
+    icon: serviceIcons[idx % serviceIcons.length],
+    providers: s.prestataires_count,
+  }));
 
   return (
     <section
@@ -174,6 +167,30 @@ const CategoriesSection: React.FC = () => {
         {loading ? (
           <div className="mt-12 flex justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          </div>
+        ) : offline ? (
+          <div className="mt-12 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-800/40">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-500">
+              <WifiOff className="h-7 w-7" />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Données non synchronisées
+            </p>
+            <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+              Impossible de joindre le serveur. Les services seront actualisés automatiquement dès que la connexion sera rétablie.
+            </p>
+          </div>
+        ) : displayItems.length === 0 ? (
+          <div className="mt-12 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-800/40">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+              <Stethoscope className="h-7 w-7 text-slate-400" />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Aucun service disponible
+            </p>
+            <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+              Aucun service n'est publié pour le moment. Revenez bientôt.
+            </p>
           </div>
         ) : (
           <motion.div

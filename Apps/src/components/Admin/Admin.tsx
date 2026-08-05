@@ -2,7 +2,7 @@ import { useState } from "react";
 import AdminNavbar from "./AdminNavbar";
 import AdminSidebar, { type PageKey } from "./AdminSidebar";
 import AdminDashboard from "./AdminDashboard";
-import Utilisateur from "./Utilisateur/Utilisateur";
+import Client from "./Client/Client";
 import Prestataire from "./Prestataire/Prestataire";
 import Service from "./Service/Service";
 import { AdminStoreProvider } from "./AdminStore";
@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const pageComponents: Record<PageKey, React.ComponentType> = {
   dashboard: AdminDashboard,
-  utilisateurs: Utilisateur,
+  clients: Client,
   prestataires: Prestataire,
   services: Service,
 };

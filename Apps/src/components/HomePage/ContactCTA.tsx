@@ -13,7 +13,7 @@ const containerVariants: Variants = {
 };
 
 const ContactCTA: React.FC = () => {
- const { userStatus, logout } = useAuth();
+ const { userStatus } = useAuth();
   return (
     <>
      {!userStatus && ( 
