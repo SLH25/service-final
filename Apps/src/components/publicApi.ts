@@ -34,6 +34,7 @@ export interface PublicPrestataire {
   ville: string;
   experience: number | null;
   status: string;
+  created_at: string;
 }
 
 // ── API Functions ────────────────────────────────────────

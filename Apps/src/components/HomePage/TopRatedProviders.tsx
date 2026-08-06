@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { motion, type Variants } from "framer-motion";
-import { Star, MapPin, Check, Clock, ArrowRight, Languages, WifiOff, UserRound } from "lucide-react";
+import { Link } from "react-router-dom";
+import { MapPin, ArrowRight, WifiOff, UserRound, BadgeCheck } from "lucide-react";
 import { fetchPublicPrestataires, type PublicPrestataire } from "../publicApi";
 
+// Données réellement exposées par l'API publique — aucune donnée fictive
 export interface Provider {
   id: string;
   name: string;
-  profession: string;
-  rating: number;
-  reviewCount: number;
-  responseTime: string;
+  serviceName: string;
   location: string;
-  language: string;
-  avatar: string;
+  photo: string;
   verified: boolean;
-  badge?: "Professionel";
 }
 
 // Durée du polling de synchronisation avec le backend (en ms)
@@ -43,12 +40,73 @@ const itemVariants: Variants = {
   },
 };
 
-// Type strict pour les badges avec index signature
-const badgeStyles: Record<"Étudiant" | "Professionel" | "Disponible", string> = {
-  Étudiant: "bg-gradient-to-r from-yellow-400 to-orange-500 text-white",
-  Professionel: "bg-gradient-to-r from-purple-500 to-indigo-600 text-white",
-  Disponible: "bg-gradient-to-r from-pink-500 to-rose-600 text-white",
-};
+// ── Couverture de carte (photo ou monogramme) ───────────────
+// Palette de dégradés pour le monogramme (couleur dérivée du nom)
+const AVATAR_GRADIENTS = [
+  "from-blue-600 via-indigo-500 to-purple-600",
+  "from-violet-600 via-purple-500 to-fuchsia-500",
+  "from-emerald-500 via-teal-500 to-cyan-500",
+  "from-orange-500 via-amber-500 to-yellow-400",
+  "from-rose-500 via-pink-500 to-fuchsia-500",
+  "from-sky-500 via-blue-500 to-indigo-600",
+  "from-cyan-500 via-teal-500 to-emerald-500",
+];
+
+function initialsOf(name: string): string {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function gradientFor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length];
+}
+
+function ProviderCover({ name, photo }: { name: string; photo: string }) {
+  const [imgError, setImgError] = useState(false);
+  const showPhoto = Boolean(photo) && !imgError;
+
+  return (
+    <div className="relative h-32 w-full shrink-0 overflow-hidden sm:h-36">
+      {showPhoto ? (
+        <>
+          <img
+            src={photo}
+            alt={name}
+            loading="lazy"
+            onError={() => setImgError(true)}
+            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/25 via-transparent to-transparent" />
+        </>
+      ) : (
+        <div
+          className={`relative flex h-full w-full items-center justify-center bg-gradient-to-br ${gradientFor(name)}`}
+        >
+          <div
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 22% 28%, rgba(255,255,255,0.7) 0, transparent 42%), radial-gradient(circle at 82% 72%, rgba(255,255,255,0.5) 0, transparent 38%), radial-gradient(circle at 55% 90%, rgba(255,255,255,0.3) 0, transparent 30%)",
+            }}
+            aria-hidden="true"
+          />
+          <span className="relative text-4xl font-bold tracking-tight text-white drop-shadow-md sm:text-5xl">
+            {initialsOf(name)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const TopRatedProviders: React.FC = () => {
   const [prestataires, setPrestataires] = useState<PublicPrestataire[]>([]);
@@ -85,19 +143,15 @@ const TopRatedProviders: React.FC = () => {
     };
   }, []);
 
-  // Afficher les données API (aucun fallback fictif)
+  // Uniquement les données réelles exposées par l'API publique
   const displayProviders: Provider[] = prestataires.map((p) => ({
     id: String(p.id),
-    name: `${p.first_name} ${p.last_name}`,
-    profession: p.service_name || "Prestataire",
-    rating: 4.8,
-    reviewCount: 0,
-    responseTime: "—",
-    location: "—",
-    language: "—",
-    avatar: "",
-    verified: true,
-    badge: "Professionel" as const,
+    name: `${p.first_name} ${p.last_name}`.trim(),
+    serviceName: p.service_name || "",
+    location: p.ville || p.adresse || "",
+    photo: p.photo || "",
+    // Le badge "Vérifié" n'apparaît que pour le statut VERIFIED (jamais pour AFFICHE)
+    verified: p.status === "VERIFIED",
   }));
 
   return (
@@ -120,7 +174,7 @@ const TopRatedProviders: React.FC = () => {
             transition={{ duration: 0.6 }}
             className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-gray-900 dark:from-white dark:via-blue-200 dark:to-white bg-clip-text text-transparent"
           >
-            Prestataires les mieux notés
+            Nos prestataires
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -129,7 +183,7 @@ const TopRatedProviders: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="mt-4 text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
           >
-            Rencontrez nos professionnels les mieux évalués, prêts à vous aider dès aujourd'hui.
+            Rencontrez nos professionnels qualifiés, prêts à vous aider dès aujourd'hui.
           </motion.p>
         </div>
 
@@ -169,110 +223,73 @@ const TopRatedProviders: React.FC = () => {
             viewport={{ once: true, amount: 0.1 }}
             className="mt-12 sm:mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8"
           >
-            {displayProviders.map((provider, idx) => (
+            {displayProviders.map((provider) => (
               <motion.div key={provider.id} variants={itemVariants}>
                 <motion.article
                   whileHover={{
-                    y: -8,
+                    y: -6,
                     transition: { type: "spring", stiffness: 400, damping: 25 },
                   }}
                   className="group relative h-full"
                 >
-                  {/* Glow effect on hover */}
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl opacity-0 group-hover:opacity-20 blur transition-opacity duration-300"></div>
+                  {/* Lueur au survol */}
+                  <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 blur transition-opacity duration-300 group-hover:opacity-20"></div>
 
-                  <div className="relative h-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden">
-                    {/* Badges en haut */}
-                    <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4">
-                      {provider.badge && (
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${badgeStyles[provider.badge]}`}>
-                          {provider.badge}
-                        </span>
-                      )}
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.3 + idx * 0.1, type: "spring", stiffness: 500 }}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${provider.verified ? "bg-green-500 text-white" : "bg-gray-300 text-gray-800"}`}
-                      >
-                        <Check className={`w-3.5 h-3.5 ${provider.verified ? "text-white" : "text-gray-800"}`} />
-                        {provider.verified ? "Vérifié" : "Non vérifié"}
-                      </motion.span>
-                    </div>
+                  <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:border-blue-200 hover:shadow-xl dark:border-gray-700/50 dark:bg-gray-800/80 dark:hover:border-blue-500/40">
+                    {/* Couverture : photo ou monogramme */}
+                    <ProviderCover name={provider.name} photo={provider.photo} />
 
-                    <div className="pt-16 p-6 h-full flex flex-col">
-                      {/* Avatar */}
-                      <div className="relative mx-auto mb-4">
-                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 p-0.5">
-                          <div className="w-full h-full rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                            <span className="text-xl font-bold text-gray-600 dark:text-gray-300">
-                              {provider.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
-                          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        </div>
-                      </div>
-
-                      {/* Nom et métier */}
-                      <div className="text-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                    {/* Contenu */}
+                    <div className="flex flex-1 flex-col p-5">
+                      {/* Nom complet + badge Vérifié */}
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="min-w-0 truncate text-base font-bold tracking-tight text-gray-900 dark:text-white sm:text-lg">
                           {provider.name}
                         </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">
-                          {provider.profession}
-                        </p>
-                      </div>
-
-                      {/* Note */}
-                      <div className="flex items-center justify-center gap-2 mb-4">
-                        <div className="flex items-center gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-4 h-4 ${
-                                i < Math.floor(provider.rating)
-                                  ? "text-yellow-400 fill-current"
-                                  : "text-gray-300 dark:text-gray-600"
-                              }`}
+                        {provider.verified && (
+                          <span
+                            title="Compte vérifié"
+                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-emerald-200/70 dark:bg-emerald-500/15 dark:ring-emerald-500/30"
+                          >
+                            <BadgeCheck
+                              className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400"
+                              strokeWidth={2.5}
+                              aria-hidden="true"
                             />
-                          ))}
-                        </div>
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {provider.rating}
-                        </span>
-                        {provider.reviewCount > 0 && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">({provider.reviewCount} avis)</span>
+                          </span>
                         )}
                       </div>
 
-                      {/* Statuts */}
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                          <Clock className="w-4 h-4 text-blue-500" />
-                          <span>Temps de réponse: {provider.responseTime}</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                          <MapPin className="w-4 h-4 text-green-500" />
+                      {/* Service principal (étiquette) */}
+                      {provider.serviceName && (
+                        <span className="mt-2.5 inline-flex w-fit items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                          {provider.serviceName}
+                        </span>
+                      )}
+
+                      {/* Ville / Localisation */}
+                      {provider.location && (
+                        <div className="mt-2.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true" />
                           <span className="truncate">{provider.location}</span>
                         </div>
-                        <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                          <Languages className="w-4 h-4 text-purple-500" />
-                          <span className="truncate">Langue: {provider.language}</span>
-                        </div>
-                      </div>
+                      )}
 
                       {/* CTA */}
-                      <div className="mt-auto">
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className="w-full group bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-                        >
-                          Voir le profil
-                          <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-                        </motion.button>
+                      <div className="mt-auto pt-5">
+                        <div className="border-t border-gray-100 pt-4 dark:border-gray-700/50">
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="group/btn inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:from-yellow-500 hover:to-orange-600 hover:shadow-lg"
+                          >
+                            Voir le profil
+                            <ArrowRight
+                              className="h-4 w-4 transform transition-transform group-hover/btn:translate-x-0.5"
+                              aria-hidden="true"
+                            />
+                          </motion.button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -289,14 +306,13 @@ const TopRatedProviders: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mt-12 sm:mt-16 flex justify-center"
         >
-          <motion.button
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
+          <Link
+            to="/prestataires"
             className="group inline-flex items-center gap-3 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-semibold px-8 py-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-2xl"
           >
             Voir tous les prestataires
             <ArrowRight className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" />
-          </motion.button>
+          </Link>
         </motion.div>
       </div>
     </section>

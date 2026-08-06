@@ -453,5 +453,6 @@ class PublicPrestataireListView(APIView):
                 "ville": p.ville,
                 "experience": p.experience,
                 "status": p.status,
+                "created_at": p.created_at,
             })
         return Response(data)
