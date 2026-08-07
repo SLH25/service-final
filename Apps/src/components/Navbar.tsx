@@ -5,6 +5,8 @@ import { Menu, X, Sun, Moon, Search } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Logo from "./Logo";
 import { useAuth } from "./SignupPage/AuthContext";
+import { useSearchData } from "../hooks/useSearchData";
+import SearchSuggestions from "./SearchSuggestions";
 
 interface NavbarProps {
   dark: boolean;
@@ -16,6 +18,7 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const { search } = useSearchData();
   const toggleDark = () => setDark(!dark);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,8 +30,11 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
     if (searchTerm.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
       setIsOpen(false);
+      setSearchTerm("");
     }
   };
+
+  const searchResults = search(searchTerm);
 
  // Définis d'abord le tableau des liens
 const navLinks = [
@@ -88,6 +94,14 @@ const navLinks = [
                   <Search size={14} className="text-white" />
                 </div>
               </button>
+              <SearchSuggestions
+                query={searchTerm}
+                results={searchResults}
+                onSelect={() => {
+                  setSearchTerm("");
+                  setIsOpen(false);
+                }}
+              />
             </form>
 
             {/* Dark toggle */}
@@ -175,6 +189,14 @@ const navLinks = [
                       <Search size={14} className="text-white" />
                     </div>
                   </button>
+                  <SearchSuggestions
+                    query={searchTerm}
+                    results={searchResults}
+                    onSelect={() => {
+                      setSearchTerm("");
+                      setIsOpen(false);
+                    }}
+                  />
                 </div>
               </form>
                 <button

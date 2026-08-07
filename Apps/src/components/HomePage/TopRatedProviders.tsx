@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, type Variants } from "framer-motion";
 import { Link } from "react-router-dom";
 import { MapPin, ArrowRight, WifiOff, UserRound, BadgeCheck } from "lucide-react";
-import { fetchPublicPrestataires, type PublicPrestataire } from "../publicApi";
+import { useSearchData } from "../../hooks/useSearchData";
 
 // Données réellement exposées par l'API publique — aucune donnée fictive
 export interface Provider {
@@ -13,9 +13,6 @@ export interface Provider {
   photo: string;
   verified: boolean;
 }
-
-// Durée du polling de synchronisation avec le backend (en ms)
-const SYNC_INTERVAL_MS = 30000;
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -109,39 +106,8 @@ function ProviderCover({ name, photo }: { name: string; photo: string }) {
 }
 
 const TopRatedProviders: React.FC = () => {
-  const [prestataires, setPrestataires] = useState<PublicPrestataire[]>([]);
-  const [loading, setLoading] = useState(true);
-  // `offline` passe à true quand l'API échoue → état explicite au lieu de données fictives
-  const [offline, setOffline] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadPrestataires(showSpinner = false) {
-      if (showSpinner) setLoading(true);
-      try {
-        const data = await fetchPublicPrestataires();
-        if (!cancelled) {
-          setPrestataires(data);
-          setOffline(false);
-        }
-      } catch {
-        if (!cancelled) setOffline(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadPrestataires(true);
-
-    // Polling : resynchronise avec les modifications de l'admin toutes les 30s
-    const interval = setInterval(() => loadPrestataires(false), SYNC_INTERVAL_MS);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+  // Prestataires partagés via le hook avec cache (même source que la Navbar et la HeroSection)
+  const { prestataires, loading, error } = useSearchData();
 
   // Uniquement les données réelles exposées par l'API publique
   const displayProviders: Provider[] = prestataires.map((p) => ({
@@ -191,7 +157,7 @@ const TopRatedProviders: React.FC = () => {
           <div className="mt-12 flex justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
           </div>
-        ) : offline ? (
+        ) : error ? (
           <div className="mt-12 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-800/40">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-500">
               <WifiOff className="h-7 w-7" />

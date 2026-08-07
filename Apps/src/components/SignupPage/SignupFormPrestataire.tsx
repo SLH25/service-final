@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   Briefcase,
   FileText,
@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import SignupFormShell from "./SignupFormShell";
 import SharedFormFields, { inputClasses, errorInputClasses } from "./SignupFormShared";
-import { fetchPublicServices, type PublicService } from "../publicApi";
+import { useSearchData } from "../../hooks/useSearchData";
 import type { FormData, FormErrors } from "./SignupContainer";
 
 interface PrestataireFormProps {
@@ -34,26 +34,8 @@ const PrestataireForm: React.FC<PrestataireFormProps> = ({
   handleSubmit,
   setStep,
 }) => {
-  const [services, setServices] = useState<PublicService[]>([]);
-  const [servicesLoading, setServicesLoading] = useState(true);
-
-  // Charger les services depuis la base de données (champ administré, pas de création libre)
-  useEffect(() => {
-    let cancelled = false;
-    fetchPublicServices()
-      .then((data) => {
-        if (!cancelled) setServices(data);
-      })
-      .catch(() => {
-        if (!cancelled) setServices([]);
-      })
-      .finally(() => {
-        if (!cancelled) setServicesLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Services partagés via le hook avec cache (même source que la Navbar et la HeroSection)
+  const { services, loading: servicesLoading } = useSearchData();
 
   const hasErrors = Object.keys(errors).some((key) => {
     const errorValue = errors[key as keyof FormData];

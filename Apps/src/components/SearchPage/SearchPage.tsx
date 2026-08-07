@@ -1,28 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, ArrowLeft, ArrowRight } from "lucide-react";
-
-// Données simulées pour la démonstration
-const mockResults = [
-  { id: 1, name: "Plomberie", category: "Santé", providers: 1200 },
-  { id: 2, name: "Éducation", category: "Éducation", providers: 980 },
-  { id: 3, name: "Transport", category: "Transport", providers: 1430 },
-  { id: 4, name: "Beauté & Coiffure", category: "Beauté & Coiffure", providers: 2100 },
-  { id: 5, name: "Restauration", category: "Restauration", providers: 2600 },
-  { id: 6, name: "Développement", category: "Développement", providers: 1540 },
-  { id: 7, name: "Sécurité", category: "Sécurité", providers: 640 },
-  { id: 8, name: "Comptabilité", category: "Comptabilité", providers: 730 },
-  { id: 9, name: "Maison", category: "Maison", providers: 1120 },
-  { id: 10, name: "Réparation moto", category: "Réparation moto", providers: 875 },
-  { id: 11, name: "Événementiel", category: "Événementiel", providers: 940 },
-  { id: 12, name: "Photographie", category: "Photographie", providers: 660 },
-];
+import { Search, ArrowLeft, ArrowRight, WifiOff } from "lucide-react";
+import { useSearchData } from "../../hooks/useSearchData";
 
 const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
   const [localQuery, setLocalQuery] = useState(query);
+  const { loading, error, search } = useSearchData();
 
   useEffect(() => {
     setLocalQuery(query);
@@ -35,14 +21,8 @@ const SearchPage: React.FC = () => {
     }
   };
 
-  // Filtrer les résultats selon la recherche
-  const filteredResults = query
-    ? mockResults.filter(
-        (item) =>
-          item.name.toLowerCase().includes(query.toLowerCase()) ||
-          item.category.toLowerCase().includes(query.toLowerCase())
-      )
-    : [];
+  // Résultats réels issus du backend (services + prestataires)
+  const filteredResults = query ? search(query) : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
@@ -72,7 +52,23 @@ const SearchPage: React.FC = () => {
         </form>
 
         {/* Résultats */}
-        {query ? (
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-800/40">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-500">
+              <WifiOff className="h-7 w-7" />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Données non synchronisées
+            </p>
+            <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+              Impossible de joindre le serveur. Les résultats seront actualisés automatiquement dès que la connexion sera rétablie.
+            </p>
+          </div>
+        ) : query ? (
           <>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               {filteredResults.length} résultat{filteredResults.length > 1 ? "s" : ""} pour "{query}"
@@ -82,7 +78,7 @@ const SearchPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredResults.map((result) => (
                   <motion.div
-                    key={result.id}
+                    key={`${result.type}-${result.id}`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all"
@@ -91,13 +87,13 @@ const SearchPage: React.FC = () => {
                       {result.name}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {result.providers.toLocaleString("fr-FR")}+ prestataires
+                      {result.subtitle}
                     </p>
                     <Link
-                      to="/services"
+                      to={result.type === "service" ? "/services" : "/prestataires"}
                       className="mt-3 inline-flex items-center gap-1 text-sm text-yellow-500 hover:text-yellow-600 font-semibold"
                     >
-                      Voir les services
+                      {result.type === "service" ? "Voir les services" : "Voir les prestataires"}
                       <ArrowRight className="w-3 h-3" />
                     </Link>
                   </motion.div>

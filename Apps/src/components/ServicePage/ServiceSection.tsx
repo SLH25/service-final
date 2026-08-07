@@ -1,6 +1,6 @@
 // src/components/ServicePage/ServicesSection.tsx
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { motion, type Variants } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
@@ -21,7 +21,7 @@ import {
   ArrowRight,
   WifiOff,
 } from "lucide-react";
-import { fetchPublicServices, type PublicService } from "../publicApi";
+import { useSearchData } from "../../hooks/useSearchData";
 
 // Icônes disponibles pour mapper les services
 const serviceIcons: LucideIcon[] = [
@@ -46,9 +46,6 @@ type Category = {
   icon: LucideIcon;
   providers: number;
 };
-
-// Durée du polling de synchronisation avec le backend (en ms)
-const SYNC_INTERVAL_MS = 30000;
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -91,40 +88,8 @@ const iconGradients = [
 ];
 
 const ServiceSection: React.FC = () => {
-  const [services, setServices] = useState<PublicService[]>([]);
-  const [loading, setLoading] = useState(true);
-  // `offline` passe à true quand l'API échoue → on affiche un état explicite
-  // au lieu de données fictives qui masqueraient la désynchronisation.
-  const [offline, setOffline] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadServices(showSpinner = false) {
-      if (showSpinner) setLoading(true);
-      try {
-        const data = await fetchPublicServices();
-        if (!cancelled) {
-          setServices(data);
-          setOffline(false);
-        }
-      } catch {
-        if (!cancelled) setOffline(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadServices(true);
-
-    // Polling : resynchronise avec les modifications de l'admin toutes les 30s
-    const interval = setInterval(() => loadServices(false), SYNC_INTERVAL_MS);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+  // Services partagés via le hook avec cache (même source que la Navbar et la HeroSection)
+  const { services, loading, error } = useSearchData();
 
   // Afficher les données API (aucun fallback fictif)
   const displayItems: Category[] = services.map((s, idx) => ({
@@ -170,7 +135,7 @@ const ServiceSection: React.FC = () => {
           <div className="mt-12 flex justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
           </div>
-        ) : offline ? (
+        ) : error ? (
           <div className="mt-12 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-800/40">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-500">
               <WifiOff className="h-7 w-7" />
