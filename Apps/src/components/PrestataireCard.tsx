@@ -1,6 +1,7 @@
 // src/components/PrestataireCard.tsx
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import {
   MapPin,
   ArrowRight,
@@ -213,21 +214,23 @@ const PrestataireCard: React.FC<PrestataireCardProps> = ({ provider }) => {
 
         {/* ── ZONE 3 : BOUTON ────────────────────────── */}
         <div className="p-6 pt-5">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="group/btn relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-yellow-400 to-orange-500 px-4 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:from-yellow-500 hover:to-orange-600 hover:shadow-lg"
-          >
-            {/* Effet brillance */}
-            <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover/btn:translate-x-full" />
-            <span className="relative flex items-center gap-2">
-              Voir le profil
-              <ArrowRight
-                className="h-4 w-4 transform transition-transform group-hover/btn:translate-x-0.5"
-                aria-hidden="true"
-              />
-            </span>
-          </motion.button>
+          <Link to={`/prestataires/${provider.id}`} className="block">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="group/btn relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-yellow-400 to-orange-500 px-4 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:from-yellow-500 hover:to-orange-600 hover:shadow-lg"
+            >
+              {/* Effet brillance */}
+              <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover/btn:translate-x-full" />
+              <span className="relative flex items-center gap-2">
+                Voir le profil
+                <ArrowRight
+                  className="h-4 w-4 transform transition-transform group-hover/btn:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </span>
+            </motion.button>
+          </Link>
         </div>
       </div>
     </motion.article>

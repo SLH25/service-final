@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import HomePage from './components/HomePage/HomePage';
 import ServicePage from './components/ServicePage/ServicePage';
 import PrestatairePage from './components/PrestatairePage/PrestatairePage';
+import PrestataireProfile from './components/PrestatairePage/PrestataireProfile';
 import AboutPage from './components/AboutPage/AboutPage';
 import ContactPage from './components/Contact Page/ContactPage';
 import SignupPage from './components/SignupPage/SignupPage';
@@ -53,6 +54,7 @@ function App() {
         <Route path='/' element={<HomePage />} />
         <Route path='/services' element={<ServicePage />} />
         <Route path='/prestataires' element={<PrestatairePage />} />
+        <Route path='/prestataires/:id' element={<PrestataireProfile />} />
         <Route path='/about' element={<AboutPage />} />
         <Route path='/contact' element={<ContactPage />} />
         <Route path='/signup' element={<SignupPage />} />

@@ -48,3 +48,8 @@ export async function fetchPublicPrestataires(): Promise<PublicPrestataire[]> {
   const res = await PublicApi.get<PublicPrestataire[]>("/prestataires/");
   return res.data;
 }
+
+export async function fetchPublicPrestataireById(id: string | number): Promise<PublicPrestataire> {
+  const res = await PublicApi.get<PublicPrestataire>(`/prestataires/${id}/`);
+  return res.data;
+}
