@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import heroImage from "../../assets/hero-image.webp"
 import { useSearchData } from "../../hooks/useSearchData";
 import SearchSuggestions from "../SearchSuggestions";
@@ -24,10 +24,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ dark = false }) => {
     if (searchTerm.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
     }
-  };
-
-  const handleServiceClick = (serviceName: string) => {
-    navigate(`/search?q=${encodeURIComponent(serviceName)}`);
   };
 
   const searchResults = search(searchTerm);
@@ -144,14 +140,13 @@ const HeroSection: React.FC<HeroSectionProps> = ({ dark = false }) => {
                 </div>
               ) : (
                 topServices.map((service) => (
-                  <button
+                  <Link
                     key={service.id}
-                    type="button"
-                    onClick={() => handleServiceClick(service.name)}
+                    to={`/services/${service.id}`}
                     className="px-5 py-3 rounded-2xl border border-white/50 text-white hover:bg-white/10 backdrop-blur-sm transition font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white focus:ring-offset-white dark:focus:ring-offset-gray-900"
                   >
                     {service.name}
-                  </button>
+                  </Link>
                 ))
               )}
               <motion.button
