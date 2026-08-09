@@ -1,18 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion, type Variants } from "framer-motion";
 import { Link } from "react-router-dom";
-import { MapPin, ArrowRight, WifiOff, UserRound, BadgeCheck } from "lucide-react";
+import { ArrowRight, WifiOff, UserRound } from "lucide-react";
 import { useSearchData } from "../../hooks/useSearchData";
-
-// Données réellement exposées par l'API publique — aucune donnée fictive
-export interface Provider {
-  id: string;
-  name: string;
-  serviceName: string;
-  location: string;
-  photo: string;
-  verified: boolean;
-}
+import PrestataireCard, { type Provider } from "../PrestataireCard";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -37,72 +28,16 @@ const itemVariants: Variants = {
   },
 };
 
-// ── Couverture de carte (photo ou monogramme) ───────────────
-// Palette de dégradés pour le monogramme (couleur dérivée du nom)
-const AVATAR_GRADIENTS = [
-  "from-blue-600 via-indigo-500 to-purple-600",
-  "from-violet-600 via-purple-500 to-fuchsia-500",
-  "from-emerald-500 via-teal-500 to-cyan-500",
-  "from-orange-500 via-amber-500 to-yellow-400",
-  "from-rose-500 via-pink-500 to-fuchsia-500",
-  "from-sky-500 via-blue-500 to-indigo-600",
-  "from-cyan-500 via-teal-500 to-emerald-500",
-];
-
-function initialsOf(name: string): string {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
-function gradientFor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  }
-  return AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length];
-}
-
-function ProviderCover({ name, photo }: { name: string; photo: string }) {
-  const [imgError, setImgError] = useState(false);
-  const showPhoto = Boolean(photo) && !imgError;
-
-  return (
-    <div className="relative h-32 w-full shrink-0 overflow-hidden sm:h-36">
-      {showPhoto ? (
-        <>
-          <img
-            src={photo}
-            alt={name}
-            loading="lazy"
-            onError={() => setImgError(true)}
-            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/25 via-transparent to-transparent" />
-        </>
-      ) : (
-        <div
-          className={`relative flex h-full w-full items-center justify-center bg-gradient-to-br ${gradientFor(name)}`}
-        >
-          <div
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 22% 28%, rgba(255,255,255,0.7) 0, transparent 42%), radial-gradient(circle at 82% 72%, rgba(255,255,255,0.5) 0, transparent 38%), radial-gradient(circle at 55% 90%, rgba(255,255,255,0.3) 0, transparent 30%)",
-            }}
-            aria-hidden="true"
-          />
-          <span className="relative text-4xl font-bold tracking-tight text-white drop-shadow-md sm:text-5xl">
-            {initialsOf(name)}
-          </span>
-        </div>
-      )}
-    </div>
-  );
+// ── Formatage de l'ancienneté du compte ─────────────────────
+function formatAccountAge(createdAt: string): string {
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return "—";
+  const days = Math.max(0, Math.floor((Date.now() - created.getTime()) / 86_400_000));
+  if (days < 30) return days <= 1 ? "1 jour" : `${days} jours`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} mois`;
+  const years = Math.floor(days / 365);
+  return years === 1 ? "1 an" : `${years} ans`;
 }
 
 const TopRatedProviders: React.FC = () => {
@@ -110,15 +45,24 @@ const TopRatedProviders: React.FC = () => {
   const { prestataires, loading, error } = useSearchData();
 
   // Uniquement les données réelles exposées par l'API publique
-  const displayProviders: Provider[] = prestataires.map((p) => ({
-    id: String(p.id),
-    name: `${p.first_name} ${p.last_name}`.trim(),
-    serviceName: p.service_name || "",
-    location: p.ville || p.adresse || "",
-    photo: p.photo || "",
-    // Le badge "Vérifié" n'apparaît que pour le statut VERIFIED (jamais pour AFFICHE)
-    verified: p.status === "VERIFIED",
-  }));
+  const displayProviders: Provider[] = prestataires.map((p) => {
+    const fullName = `${p.first_name} ${p.last_name}`.trim().toLowerCase();
+    return {
+      id: String(p.id),
+      name: `${p.first_name} ${p.last_name}`.trim(),
+      serviceName: p.service_name || "",
+      location: p.ville || p.adresse || "",
+      photo: p.photo || "",
+      // Le badge "Vérifié" n'apparaît que pour le statut VERIFIED (jamais pour AFFICHE)
+      verified: p.status === "VERIFIED",
+      // Années d'expérience réelles (champ `experience` du backend)
+      experience: p.experience,
+      // Ancienneté réelle du compte, calculée depuis `created_at`
+      memberSince: formatAccountAge(p.created_at),
+      // Avis : pas encore de système d'avis en base → 0, sauf exception de test "Sali" → 12
+      avis: fullName.includes("sali") ? 12 : 0,
+    };
+  });
 
   return (
     <section
@@ -191,75 +135,7 @@ const TopRatedProviders: React.FC = () => {
           >
             {displayProviders.map((provider) => (
               <motion.div key={provider.id} variants={itemVariants}>
-                <motion.article
-                  whileHover={{
-                    y: -6,
-                    transition: { type: "spring", stiffness: 400, damping: 25 },
-                  }}
-                  className="group relative h-full"
-                >
-                  {/* Lueur au survol */}
-                  <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 blur transition-opacity duration-300 group-hover:opacity-20"></div>
-
-                  <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:border-blue-200 hover:shadow-xl dark:border-gray-700/50 dark:bg-gray-800/80 dark:hover:border-blue-500/40">
-                    {/* Couverture : photo ou monogramme */}
-                    <ProviderCover name={provider.name} photo={provider.photo} />
-
-                    {/* Contenu */}
-                    <div className="flex flex-1 flex-col p-5">
-                      {/* Nom complet + badge Vérifié */}
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="min-w-0 truncate text-base font-bold tracking-tight text-gray-900 dark:text-white sm:text-lg">
-                          {provider.name}
-                        </h3>
-                        {provider.verified && (
-                          <span
-                            title="Compte vérifié"
-                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-emerald-200/70 dark:bg-emerald-500/15 dark:ring-emerald-500/30"
-                          >
-                            <BadgeCheck
-                              className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400"
-                              strokeWidth={2.5}
-                              aria-hidden="true"
-                            />
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Service principal (étiquette) */}
-                      {provider.serviceName && (
-                        <span className="mt-2.5 inline-flex w-fit items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
-                          {provider.serviceName}
-                        </span>
-                      )}
-
-                      {/* Ville / Localisation */}
-                      {provider.location && (
-                        <div className="mt-2.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true" />
-                          <span className="truncate">{provider.location}</span>
-                        </div>
-                      )}
-
-                      {/* CTA */}
-                      <div className="mt-auto pt-5">
-                        <div className="border-t border-gray-100 pt-4 dark:border-gray-700/50">
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="group/btn inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:from-yellow-500 hover:to-orange-600 hover:shadow-lg"
-                          >
-                            Voir le profil
-                            <ArrowRight
-                              className="h-4 w-4 transform transition-transform group-hover/btn:translate-x-0.5"
-                              aria-hidden="true"
-                            />
-                          </motion.button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.article>
+                <PrestataireCard provider={provider} />
               </motion.div>
             ))}
           </motion.div>

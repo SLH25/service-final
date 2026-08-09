@@ -3,8 +3,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-// import heroImage from "../assets/hero-image.png";
-import heroImage from "../../assets/hero-image.png"
+import heroImage from "../../assets/hero-image.webp"
 import { useSearchData } from "../../hooks/useSearchData";
 import SearchSuggestions from "../SearchSuggestions";
 
