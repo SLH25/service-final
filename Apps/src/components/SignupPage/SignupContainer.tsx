@@ -13,7 +13,9 @@ export interface FormData {
   username: string;
   email: string;
   telephone: string;
+  telephoneSecondaire: string;
   serviceId: number | "";
+  experience: number | "";
   description: string;
   ville: string;
   adresse: string;
@@ -28,7 +30,9 @@ const emptyForm: FormData = {
   username: "",
   email: "",
   telephone: "",
+  telephoneSecondaire: "",
   serviceId: "",
+  experience: "",
   description: "",
   ville: "",
   adresse: "",
@@ -98,6 +102,17 @@ const SignupContainer: React.FC = () => {
       newErrors.email = "L'email n'est pas valide";
     }
 
+    if (!formData.telephone.trim()) {
+      newErrors.telephone = "Le téléphone est requis";
+    } else if (!/^[+0-9][0-9\s.-]{5,}$/.test(formData.telephone.trim())) {
+      newErrors.telephone = "Le téléphone n'est pas valide";
+    }
+
+    // Téléphone secondaire : optionnel mais format vérifié si renseigné
+    if (formData.telephoneSecondaire.trim() && !/^[+0-9][0-9\s.-]{5,}$/.test(formData.telephoneSecondaire.trim())) {
+      newErrors.telephoneSecondaire = "Le téléphone n'est pas valide";
+    }
+
     if (!formData.password) {
       newErrors.password = "Le mot de passe est requis";
     } else if (formData.password.length < 8) {
@@ -108,8 +123,18 @@ const SignupContainer: React.FC = () => {
       newErrors.passwordConfirm = "Les mots de passe ne correspondent pas";
     }
 
-    if (!formData.acceptTerms) {
+    // Conditions : obligatoire uniquement pour le prestataire
+    if (selectedType === "prestataire" && !formData.acceptTerms) {
       newErrors.acceptTerms = "Vous devez accepter les conditions";
+    }
+
+    // Validation spécifique prestataire
+    if (selectedType === "prestataire") {
+      if (formData.experience === "") {
+        newErrors.experience = "L'expérience est requise";
+      } else if (Number(formData.experience) < 0 || Number(formData.experience) > 99) {
+        newErrors.experience = "L'expérience doit être entre 0 et 99 ans";
+      }
     }
 
     setErrors(newErrors);
@@ -142,7 +167,6 @@ const SignupContainer: React.FC = () => {
           telephone: formData.telephone,
           password: formData.password,
           password_confirm: formData.passwordConfirm,
-          accept_terms: formData.acceptTerms,
         };
       } else {
         payload = {
@@ -153,6 +177,8 @@ const SignupContainer: React.FC = () => {
           last_name: formData.lastName,
           telephone: formData.telephone,
           service: formData.serviceId || null,
+          telephone_secondaire: formData.telephoneSecondaire,
+          experience: formData.experience !== "" ? Number(formData.experience) : null,
           description: formData.description,
           ville: formData.ville,
           adresse: formData.adresse,
@@ -180,6 +206,8 @@ const SignupContainer: React.FC = () => {
           last_name: "lastName",
           service: "serviceId",
           telephone: "telephone",
+          telephone_secondaire: "telephoneSecondaire",
+          experience: "experience",
         };
         const newErrors: FormErrors = {};
         for (const [key, messages] of Object.entries(data)) {

@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
 import {
   User,
   Mail,
@@ -234,33 +233,6 @@ const SharedFormFields: React.FC<SharedFormFieldsProps> = ({
         </div>
       </div>
 
-      {/* Conditions */}
-      <div className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          name="acceptTerms"
-          checked={formData.acceptTerms}
-          onChange={handleInputChange}
-          className="mt-1 w-5 h-5 text-yellow-400 bg-gray-100 border-gray-300 rounded focus:ring-yellow-400 focus:ring-2"
-        />
-        <label className="text-sm text-gray-600 dark:text-gray-300">
-          J'accepte les{" "}
-          <Link to="/terms" className="text-yellow-500 hover:text-yellow-600 underline">
-            conditions d'utilisation
-          </Link>{" "}
-          et la{" "}
-          <Link to="/privacy" className="text-yellow-500 hover:text-yellow-600 underline">
-            politique de confidentialité
-          </Link>{" "}
-          *
-        </label>
-      </div>
-      {errors.acceptTerms && (
-        <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
-          <AlertCircle className="w-4 h-4" />
-          {errors.acceptTerms}
-        </div>
-      )}
     </>
   );
 };

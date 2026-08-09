@@ -26,7 +26,7 @@ export interface RegisterPayloadBase {
   telephone: string;
   password: string;
   password_confirm: string;
-  accept_terms: boolean;
+  accept_terms?: boolean;
 }
 
 export interface RegisterClientPayload extends RegisterPayloadBase {
@@ -36,6 +36,8 @@ export interface RegisterClientPayload extends RegisterPayloadBase {
 export interface RegisterPrestatairePayload extends RegisterPayloadBase {
   role: "prestataire";
   service: number | null;
+  telephone_secondaire?: string;
+  experience?: number | null;
   description?: string;
   ville?: string;
   adresse?: string;

@@ -28,6 +28,7 @@ export interface PublicPrestataire {
   service_name: string;
   email: string;
   telephone: string;
+  telephone_secondaire: string;
   description: string;
   photo: string;
   adresse: string;

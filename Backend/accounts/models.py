@@ -139,6 +139,7 @@ class Prestataire(models.Model):
         Service, on_delete=models.SET_NULL, null=True, blank=True, related_name="prestataires"
     )
     telephone = models.CharField(max_length=30, blank=True)
+    telephone_secondaire = models.CharField(max_length=30, blank=True)
     description = models.TextField(blank=True)
     photo = models.URLField(blank=True)
     adresse = models.CharField(max_length=255, blank=True)

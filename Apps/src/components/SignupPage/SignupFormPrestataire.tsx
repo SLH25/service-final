@@ -1,10 +1,13 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import {
   Briefcase,
   FileText,
   MapPin,
   Building,
   AlertCircle,
+  Clock,
+  Phone,
 } from "lucide-react";
 import SignupFormShell from "./SignupFormShell";
 import SharedFormFields, { inputClasses, errorInputClasses } from "./SignupFormShared";
@@ -50,6 +53,7 @@ const PrestataireForm: React.FC<PrestataireFormProps> = ({
     formData.email.trim() !== "" &&
     formData.telephone.trim() !== "" &&
     formData.serviceId !== "" &&
+    formData.experience !== "" &&
     formData.password !== "" &&
     formData.passwordConfirm !== "" &&
     formData.acceptTerms === true;
@@ -105,6 +109,58 @@ const PrestataireForm: React.FC<PrestataireFormProps> = ({
           <div className="flex items-center gap-2 mt-2 text-red-600 dark:text-red-400 text-sm">
             <AlertCircle className="w-4 h-4" />
             {errors.serviceId}
+          </div>
+        )}
+      </div>
+
+      {/* Deuxième téléphone (optionnel) */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+          Deuxième téléphone (optionnel)
+        </label>
+        <div className="relative">
+          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="tel"
+            name="telephoneSecondaire"
+            value={formData.telephoneSecondaire}
+            onChange={handleInputChange}
+            className={errors.telephoneSecondaire ? errorInputClasses : inputClasses}
+            style={{ paddingLeft: "2.75rem" }}
+            placeholder="06 12 34 56 78 (optionnel)"
+          />
+        </div>
+        {errors.telephoneSecondaire && (
+          <div className="flex items-center gap-2 mt-2 text-red-600 dark:text-red-400 text-sm">
+            <AlertCircle className="w-4 h-4" />
+            {errors.telephoneSecondaire}
+          </div>
+        )}
+      </div>
+
+      {/* Expérience */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+          Expérience (en années) *
+        </label>
+        <div className="relative">
+          <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="number"
+            name="experience"
+            value={formData.experience}
+            onChange={handleInputChange}
+            min={0}
+            max={99}
+            className={errors.experience ? errorInputClasses : inputClasses}
+            style={{ paddingLeft: "2.75rem" }}
+            placeholder="Ex : 3"
+          />
+        </div>
+        {errors.experience && (
+          <div className="flex items-center gap-2 mt-2 text-red-600 dark:text-red-400 text-sm">
+            <AlertCircle className="w-4 h-4" />
+            {errors.experience}
           </div>
         )}
       </div>
@@ -165,6 +221,30 @@ const PrestataireForm: React.FC<PrestataireFormProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Conditions d'utilisation (obligatoire pour prestataire) */}
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          name="acceptTerms"
+          checked={formData.acceptTerms}
+          onChange={handleInputChange}
+          className="mt-1 w-5 h-5 text-yellow-400 bg-gray-100 border-gray-300 rounded focus:ring-yellow-400 focus:ring-2"
+        />
+        <label className="text-sm text-gray-600 dark:text-gray-300">
+          J'accepte les{" "}
+          <Link to="/conditions-utilisation" className="text-yellow-500 hover:text-yellow-600 underline">
+            conditions d'utilisation
+          </Link>{" "}
+          *
+        </label>
+      </div>
+      {errors.acceptTerms && (
+        <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
+          <AlertCircle className="w-4 h-4" />
+          {errors.acceptTerms}
+        </div>
+      )}
     </SignupFormShell>
   );
 };

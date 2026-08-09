@@ -101,6 +101,7 @@ class PrestataireSerializer(serializers.ModelSerializer):
             "service",
             "service_name",
             "telephone",
+            "telephone_secondaire",
             "description",
             "photo",
             "adresse",
@@ -126,6 +127,7 @@ class PrestataireUpdateSerializer(serializers.ModelSerializer):
             "service",
             "email",
             "telephone",
+            "telephone_secondaire",
             "description",
             "photo",
             "adresse",
@@ -188,6 +190,8 @@ class RegisterSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    telephone_secondaire = serializers.CharField(required=False, allow_blank=True, max_length=30)
+    experience = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=99)
     description = serializers.CharField(required=False, allow_blank=True)
     ville = serializers.CharField(required=False, allow_blank=True, max_length=100)
     adresse = serializers.CharField(required=False, allow_blank=True, max_length=255)
@@ -197,7 +201,9 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"password_confirm": "Les mots de passe ne correspondent pas."}
             )
-        if not attrs.get("accept_terms"):
+        role = attrs.get("role")
+        # Seuls les prestataires doivent obligatoirement accepter les conditions
+        if role == "prestataire" and not attrs.get("accept_terms"):
             raise serializers.ValidationError(
                 {"accept_terms": "Vous devez accepter les conditions d'utilisation."}
             )
@@ -213,7 +219,6 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"email": "Un compte avec cet email existe déjà."}
             )
-        role = attrs.get("role")
         if role == "prestataire":
             if not attrs.get("first_name") or not attrs.get("last_name"):
                 raise serializers.ValidationError(
@@ -222,6 +227,14 @@ class RegisterSerializer(serializers.Serializer):
             if not attrs.get("service"):
                 raise serializers.ValidationError(
                     {"service": "Le service est requis pour un prestataire."}
+                )
+            if not attrs.get("telephone"):
+                raise serializers.ValidationError(
+                    {"telephone": "Le téléphone est requis pour un prestataire."}
+                )
+            if not attrs.get("experience"):
+                raise serializers.ValidationError(
+                    {"experience": "L'expérience est requise pour un prestataire."}
                 )
         return attrs
 
@@ -258,6 +271,8 @@ class RegisterSerializer(serializers.Serializer):
                 last_name=last_name,
                 service=service,
                 telephone=telephone,
+                telephone_secondaire=validated_data.pop("telephone_secondaire", ""),
+                experience=validated_data.pop("experience", None),
                 description=validated_data.pop("description", ""),
                 ville=validated_data.pop("ville", ""),
                 adresse=validated_data.pop("adresse", ""),

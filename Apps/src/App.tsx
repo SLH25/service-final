@@ -15,6 +15,7 @@ import Profile from './components/profile';
 import {Logout} from './components/Logout';
 import SearchPage from './components/SearchPage/SearchPage';
 import AdminConnect from './components/Admin/AdminConnect';
+import TermsPage from './components/Legal/TermsPage';
 import { useAuth } from './components/SignupPage/AuthContext';
 
 /** Protected route wrapper: redirects to /login if not authenticated */
@@ -61,6 +62,7 @@ function App() {
         <Route path='/contact' element={<ContactPage />} />
         <Route path='/signup' element={<SignupPage />} />
         <Route path='/login' element={<LoginPage />} />
+        <Route path='/conditions-utilisation' element={<TermsPage />} />
         <Route path='/profile' element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path='/logout' element={<ProtectedRoute><Logout /></ProtectedRoute>} />
         <Route path='/search' element={<SearchPage />} />

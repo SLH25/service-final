@@ -34,8 +34,7 @@ const SignupForm: React.FC<SignupFormProps> = ({
     formData.email.trim() !== "" &&
     formData.telephone.trim() !== "" &&
     formData.password !== "" &&
-    formData.passwordConfirm !== "" &&
-    formData.acceptTerms === true;
+    formData.passwordConfirm !== "";
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
