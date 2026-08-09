@@ -127,7 +127,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ dark = false }) => {
             transition={{ duration: 0.9, delay: 0.6 }}
             className="w-full max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-3 mt-6"
           >
-            <div className="flex flex-wrap justify-center gap-2">
+            {/* min-height réserve l'espace exact des services chargés (3 lignes mobile, 2 lignes tablet, 1 ligne desktop) pour éliminer le CLS */}
+            <div className="flex flex-wrap justify-center gap-2 min-h-[148px] sm:min-h-[96px] lg:min-h-[44px]">
               {loading ? (
                 <div className="flex items-center gap-2 px-5 py-3 rounded-2xl border border-white/50 text-white/80 backdrop-blur-sm">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></div>
