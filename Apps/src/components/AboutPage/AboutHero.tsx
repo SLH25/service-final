@@ -2,6 +2,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 
+
 const AboutHero: React.FC = () => {
   return (
     <section
@@ -39,12 +40,12 @@ const AboutHero: React.FC = () => {
           transition={{ duration: 0.7, delay: 0.4 }}
           className="mt-10 flex justify-center gap-4"
         >
-          <button className="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 shadow-lg hover:shadow-2xl transition-all">
+          <a href="/services" className="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 shadow-lg hover:shadow-2xl transition-all">
             Découvrir nos services
-          </button>
-          <button className="px-6 py-3 rounded-xl font-semibold text-blue-600 dark:text-blue-400 border border-blue-600/40 dark:border-blue-400/40 hover:bg-blue-50 dark:hover:bg-gray-800 transition-all">
+          </a>
+          <a href="/contact" className="px-6 py-3 rounded-xl font-semibold text-blue-600 dark:text-blue-400 border border-blue-600/40 dark:border-blue-400/40 hover:bg-blue-50 dark:hover:bg-gray-800 transition-all">
             Nous contacter
-          </button>
+          </a>
         </motion.div>
       </div>
     </section>
