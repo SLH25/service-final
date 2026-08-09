@@ -456,3 +456,38 @@ class PublicPrestataireListView(APIView):
                 "created_at": p.created_at,
             })
         return Response(data)
+
+
+class PublicPrestataireDetailView(APIView):
+    """Détail public d'un prestataire — seuls VERIFIED et AFFICHE sont visibles."""
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request, pk):
+        try:
+            prestataire = (
+                Prestataire.objects.select_related("user", "service")
+                .get(pk=pk, status__in=(Prestataire.Status.VERIFIED, Prestataire.Status.AFFICHE))
+            )
+        except Prestataire.DoesNotExist:
+            return Response(
+                {"detail": "Prestataire introuvable."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response({
+            "id": prestataire.id,
+            "first_name": prestataire.first_name,
+            "last_name": prestataire.last_name,
+            "service_name": prestataire.service.name if prestataire.service else "",
+            "email": prestataire.user.email,
+            "telephone": prestataire.telephone,
+            "description": prestataire.description,
+            "photo": prestataire.photo,
+            "adresse": prestataire.adresse,
+            "ville": prestataire.ville,
+            "experience": prestataire.experience,
+            "status": prestataire.status,
+            "created_at": prestataire.created_at,
+        })
