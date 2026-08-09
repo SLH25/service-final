@@ -42,6 +42,7 @@ const serviceIcons: LucideIcon[] = [
 
 // Type de catégorie affichée (issue de l'API)
 type Category = {
+  id: number;
   name: string;
   icon: LucideIcon;
   providers: number;
@@ -93,6 +94,7 @@ const ServiceSection: React.FC = () => {
 
   // Afficher les données API (aucun fallback fictif)
   const displayItems: Category[] = services.map((s, idx) => ({
+    id: s.id,
     name: s.name,
     icon: serviceIcons[idx % serviceIcons.length],
     providers: s.prestataires_count,
@@ -167,7 +169,7 @@ const ServiceSection: React.FC = () => {
             viewport={{ once: true, amount: 0.15 }}
             className="mt-12 sm:mt-16 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
           >
-            {displayItems.map(({ name, icon: Icon, providers }, idx) => (
+            {displayItems.map(({ id, name, icon: Icon, providers }, idx) => (
               <motion.div key={name} variants={itemVariants}>
                 <motion.article
                   whileHover={{
@@ -179,10 +181,10 @@ const ServiceSection: React.FC = () => {
                   {/* Glow effect on hover */}
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl opacity-0 group-hover:opacity-20 blur transition-opacity duration-300"></div>
 
-                  <button
-                    type="button"
+                  <Link
+                    to={`/services/${id}`}
                     aria-label={`Voir la catégorie ${name}`}
-                    className="relative w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 rounded-2xl"
+                    className="relative block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 rounded-2xl"
                   >
                     <div className="relative h-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden">
                       <div className="p-5 sm:p-6 h-full flex flex-col items-center text-center">
@@ -226,7 +228,7 @@ const ServiceSection: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  </button>
+                  </Link>
                 </motion.article>
               </motion.div>
             ))}

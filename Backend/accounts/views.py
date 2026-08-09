@@ -426,6 +426,54 @@ class PublicServiceListView(APIView):
         return Response(data)
 
 
+class PublicServiceDetailView(APIView):
+    """Détail public d'un service + ses prestataires visibles (VERIFIED / AFFICHE)."""
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request, pk):
+        try:
+            service = Service.objects.get(pk=pk, active=True)
+        except Service.DoesNotExist:
+            return Response(
+                {"detail": "Service introuvable."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        prestataires = (
+            Prestataire.objects.select_related("user", "service")
+            .filter(service=service, status__in=(Prestataire.Status.VERIFIED, Prestataire.Status.AFFICHE))
+            .order_by("-created_at")
+        )
+
+        prestataires_data = []
+        for p in prestataires:
+            prestataires_data.append({
+                "id": p.id,
+                "first_name": p.first_name,
+                "last_name": p.last_name,
+                "service_name": p.service.name if p.service else "",
+                "email": p.user.email,
+                "telephone": p.telephone,
+                "description": p.description,
+                "photo": p.photo,
+                "adresse": p.adresse,
+                "ville": p.ville,
+                "experience": p.experience,
+                "status": p.status,
+                "created_at": p.created_at,
+            })
+
+        return Response({
+            "id": service.id,
+            "name": service.name,
+            "description": service.description,
+            "prestataires_count": len(prestataires_data),
+            "prestataires": prestataires_data,
+        })
+
+
 class PublicPrestataireListView(APIView):
     """Liste publique des prestataires — seuls VERIFIED et AFFICHE sont visibles."""
 

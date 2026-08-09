@@ -14,6 +14,7 @@ from .views import (
     StatsView,
     ActivityView,
     PublicServiceListView,
+    PublicServiceDetailView,
     PublicPrestataireListView,
     PublicPrestataireDetailView,
 )
@@ -37,6 +38,7 @@ urlpatterns = [
     path("activity/", ActivityView.as_view(), name="activity"),
     # Endpoints publics (sans auth)
     path("public/services/", PublicServiceListView.as_view(), name="public_services"),
+    path("public/services/<int:pk>/", PublicServiceDetailView.as_view(), name="public_service_detail"),
     path("public/prestataires/", PublicPrestataireListView.as_view(), name="public_prestataires"),
     path("public/prestataires/<int:pk>/", PublicPrestataireDetailView.as_view(), name="public_prestataire_detail"),
     path("", include(router.urls)),

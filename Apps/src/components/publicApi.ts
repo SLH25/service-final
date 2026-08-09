@@ -37,6 +37,14 @@ export interface PublicPrestataire {
   created_at: string;
 }
 
+export interface PublicServiceDetail {
+  id: number;
+  name: string;
+  description: string;
+  prestataires_count: number;
+  prestataires: PublicPrestataire[];
+}
+
 // ── API Functions ────────────────────────────────────────
 
 export async function fetchPublicServices(): Promise<PublicService[]> {
@@ -51,5 +59,10 @@ export async function fetchPublicPrestataires(): Promise<PublicPrestataire[]> {
 
 export async function fetchPublicPrestataireById(id: string | number): Promise<PublicPrestataire> {
   const res = await PublicApi.get<PublicPrestataire>(`/prestataires/${id}/`);
+  return res.data;
+}
+
+export async function fetchPublicServiceById(id: string | number): Promise<PublicServiceDetail> {
+  const res = await PublicApi.get<PublicServiceDetail>(`/services/${id}/`);
   return res.data;
 }
