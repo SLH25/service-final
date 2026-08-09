@@ -46,9 +46,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ dark = false }) => {
         {/* Overlay sombre */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60 dark:from-gray-900/80 dark:via-gray-900/70 dark:to-gray-900/80 transition-colors duration-300" />
 
-        {/* Effets décoratifs */}
-        <div className="absolute top-10 right-10 w-72 h-72 bg-blue-500/20 dark:bg-blue-900/30 rounded-full mix-blend-multiply blur-3xl opacity-70" />
-        <div className="absolute bottom-20 left-10 w-72 h-72 bg-purple-500/20 dark:bg-purple-900/30 rounded-full mix-blend-multiply blur-3xl opacity-70" />
+        {/* Effets décoratifs — transform-gpu isole chaque élément dans son propre layer GPU pour éviter le recalcul de compositing (CLS) */}
+        <div className="absolute top-10 right-10 w-72 h-72 bg-blue-500/20 dark:bg-blue-900/30 rounded-full mix-blend-multiply blur-3xl opacity-70 transform-gpu" />
+        <div className="absolute bottom-20 left-10 w-72 h-72 bg-purple-500/20 dark:bg-purple-900/30 rounded-full mix-blend-multiply blur-3xl opacity-70 transform-gpu" />
 
         {/* Contenu centré */}
         <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-16 md:py-20 lg:py-24 flex flex-col items-center text-center">
